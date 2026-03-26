@@ -336,14 +336,3 @@ function TreatmentCard({ treatment: t, isPast }: { treatment: TreatmentLog; isPa
     </div>
   )
 }
-
-function EffectivenessDots({ rating }: { rating: number | null }) {
-  if (!rating) return <span className="text-xs text-slate">Not rated</span>
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`w-2.5 h-2.5 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
-      ))}
-    </div>
-  )
-}
