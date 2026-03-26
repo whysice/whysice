@@ -14,6 +14,7 @@ type TreatmentLog = {
 
 type MedOption = { id: string; name: string; slug: string; brand_names: string[] | null }
 
+// Single definition of EffectivenessDots - no duplicates
 function EffectivenessDots({ rating }: { rating: number | null }) {
   if (!rating) return <span className="text-xs text-slate">Not rated</span>
   return (
