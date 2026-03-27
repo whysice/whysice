@@ -230,7 +230,41 @@ export async function uploadDocument(
 
   if (metaError) console.error('Metadata insert failed:', metaError)
 
+  // Trigger document processing (text extraction + AI parsing)
+  if (meta) {
+    triggerDocumentProcessing(meta.id, data.path, file.name, file.type).catch(err =>
+      console.error('Document processing trigger failed:', err)
+    )
+  }
+
   return { path: data.path, name: file.name, size: file.size, type: file.type, category, metadata: meta }
+}
+
+// Fire-and-forget call to Edge Function for document processing
+async function triggerDocumentProcessing(docId: string, storagePath: string, fileName: string, fileType: string) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
+  if (!supabaseUrl || supabaseUrl.includes('placeholder')) return
+
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/process-document`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+        storage_path: storagePath,
+        file_name: fileName,
+        file_type: fileType,
+      }),
+    })
+  } catch (err) {
+    console.error('Edge function call failed:', err)
+  }
 }
 
 export async function getDocuments(dogId: string) {

@@ -399,6 +399,57 @@ export default function DocumentsPage() {
                             </div>
                           </div>
                         )}
+
+                        {/* Extraction status and AI-parsed data */}
+                        {doc.extraction_status === 'processing' && (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-tanzanite-500">
+                            <div className="w-3 h-3 border-2 border-tanzanite-500 border-t-transparent rounded-full animate-spin" />
+                            Extracting text and analyzing content...
+                          </div>
+                        )}
+                        {doc.extraction_status === 'completed' && doc.extracted_data && (
+                          <div className="mt-2 pt-2 border-t border-tanzanite-50">
+                            {doc.extracted_data.summary && (
+                              <p className="text-xs text-body mb-1">{doc.extracted_data.summary}</p>
+                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {doc.extracted_data.document_type && (
+                                <span className="badge bg-tanzanite-50 text-tanzanite-600 text-[10px]">
+                                  {doc.extracted_data.document_type.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                              {doc.extracted_data.diagnoses_mentioned?.map((d: string, i: number) => (
+                                <span key={i} className="badge bg-ice-50 text-ice-700 text-[10px]">{d}</span>
+                              ))}
+                            </div>
+                            {doc.extracted_data.culture_results?.organisms && (
+                              <div className="mt-2 p-2 bg-tanzanite-50/30 rounded-lg">
+                                <p className="text-[10px] font-semibold text-tanzanite-600 uppercase mb-1">Culture results</p>
+                                {doc.extracted_data.culture_results.organisms.map((org: any, i: number) => (
+                                  <div key={i} className="mb-1.5 last:mb-0">
+                                    <p className="text-xs font-medium text-body">{org.name} {org.growth && `(${org.growth})`}</p>
+                                    {org.sensitivities && (
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {org.sensitivities.filter((s: any) => s.result === 'S').map((s: any, j: number) => (
+                                          <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700">{s.antibiotic} S</span>
+                                        ))}
+                                        {org.sensitivities.filter((s: any) => s.result === 'R').slice(0, 5).map((s: any, j: number) => (
+                                          <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600">{s.antibiotic} R</span>
+                                        ))}
+                                        {org.sensitivities.filter((s: any) => s.result === 'R').length > 5 && (
+                                          <span className="text-[10px] text-red-400">+{org.sensitivities.filter((s: any) => s.result === 'R').length - 5} more R</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {doc.extraction_status === 'failed' && (
+                          <p className="mt-2 text-xs text-red-400">Text extraction failed</p>
+                        )}
                       </div>
                     )
                   })}
