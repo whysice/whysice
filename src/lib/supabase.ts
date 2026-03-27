@@ -179,10 +179,21 @@ export async function getPendingEdits() {
 }
 
 // ============================================
-// DOCUMENT STORAGE
+// DOCUMENT STORAGE + METADATA
 // ============================================
 
-export async function uploadDocument(file: File, dogId: string, category: string = 'general') {
+export async function uploadDocument(
+  file: File,
+  dogId: string,
+  category: string = 'general',
+  options?: {
+    description?: string
+    doc_date?: string
+    vet_visit_id?: string
+    treatment_log_id?: string
+    tags?: string[]
+  }
+) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Must be logged in to upload')
 
@@ -190,25 +201,126 @@ export async function uploadDocument(file: File, dogId: string, category: string
   const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
   const path = `${user.id}/${dogId}/${category}/${timestamp}_${safeName}`
 
+  // Upload file to storage
   const { data, error } = await supabase.storage
     .from('vet-documents')
     .upload(path, file)
 
   if (error) throw error
-  return { path: data.path, name: file.name, size: file.size, type: file.type, category, uploaded_at: new Date().toISOString() }
+
+  // Create metadata record
+  const { data: meta, error: metaError } = await supabase
+    .from('document_metadata')
+    .insert({
+      user_id: user.id,
+      dog_id: dogId,
+      storage_path: data.path,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      category,
+      description: options?.description || null,
+      doc_date: options?.doc_date || null,
+      vet_visit_id: options?.vet_visit_id || null,
+      treatment_log_id: options?.treatment_log_id || null,
+      tags: options?.tags || null,
+    })
+    .select()
+    .single()
+
+  if (metaError) console.error('Metadata insert failed:', metaError)
+
+  return { path: data.path, name: file.name, size: file.size, type: file.type, category, metadata: meta }
 }
 
+export async function getDocuments(dogId: string) {
+  const { data, error } = await supabase
+    .from('document_metadata')
+    .select(`
+      *,
+      vet_visits (visit_date, vet_name, reason),
+      treatment_logs (treatment_name, date_started)
+    `)
+    .eq('dog_id', dogId)
+    .order('created_at', { ascending: false })
+
+  if (error) return []
+  return data
+}
+
+export async function getDocumentsForVisit(visitId: string) {
+  const { data, error } = await supabase
+    .from('document_metadata')
+    .select('*')
+    .eq('vet_visit_id', visitId)
+    .order('created_at', { ascending: false })
+
+  if (error) return []
+  return data
+}
+
+export async function getDocumentsForTreatment(treatmentId: string) {
+  const { data, error } = await supabase
+    .from('document_metadata')
+    .select('*')
+    .eq('treatment_log_id', treatmentId)
+    .order('created_at', { ascending: false })
+
+  if (error) return []
+  return data
+}
+
+export async function updateDocumentMetadata(docId: string, updates: {
+  description?: string
+  doc_date?: string
+  vet_visit_id?: string | null
+  treatment_log_id?: string | null
+  category?: string
+  tags?: string[]
+}) {
+  const { data, error } = await supabase
+    .from('document_metadata')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function searchDocuments(query: string, dogId?: string) {
+  const { data, error } = await supabase
+    .rpc('search_documents', {
+      search_query: query,
+      dog_id_filter: dogId || null,
+      result_limit: 20
+    })
+
+  if (error) return []
+  return data
+}
+
+export async function getDocumentUrl(path: string) {
+  const { data } = await supabase.storage
+    .from('vet-documents')
+    .createSignedUrl(path, 3600)
+
+  return data?.signedUrl || null
+}
+
+export async function deleteDocument(docId: string, storagePath: string) {
+  // Delete from storage
+  await supabase.storage.from('vet-documents').remove([storagePath])
+  // Delete metadata
+  await supabase.from('document_metadata').delete().eq('id', docId)
+}
+
+// Legacy function for listing files without metadata (fallback)
 export async function listDocuments(dogId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data, error } = await supabase.storage
-    .from('vet-documents')
-    .list(`${user.id}/${dogId}`, { sortBy: { column: 'created_at', order: 'desc' } })
-
-  if (error) return []
-
-  // List files in all category subfolders
   const categories = ['general', 'cultures', 'lab-results', 'prescriptions', 'vet-notes', 'imaging']
   const allFiles: any[] = []
 
@@ -220,31 +332,11 @@ export async function listDocuments(dogId: string) {
     if (files) {
       for (const f of files) {
         if (f.name) {
-          allFiles.push({
-            ...f,
-            category: cat,
-            fullPath: `${user.id}/${dogId}/${cat}/${f.name}`,
-          })
+          allFiles.push({ ...f, category: cat, fullPath: `${user.id}/${dogId}/${cat}/${f.name}` })
         }
       }
     }
   }
 
   return allFiles
-}
-
-export async function getDocumentUrl(path: string) {
-  const { data } = await supabase.storage
-    .from('vet-documents')
-    .createSignedUrl(path, 3600) // 1 hour expiry
-
-  return data?.signedUrl || null
-}
-
-export async function deleteDocument(path: string) {
-  const { error } = await supabase.storage
-    .from('vet-documents')
-    .remove([path])
-
-  if (error) throw error
 }

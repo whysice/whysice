@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, FileText, Download, Activity, Pill, Calendar, PawPrint } from 'lucide-react'
-import { getDogs, getSymptomLogs, getTreatmentLogs, getVetVisits } from '@/lib/supabase'
+import { ArrowLeft, FileText, Download, Activity, Pill, Calendar, PawPrint, Paperclip } from 'lucide-react'
+import { getDogs, getSymptomLogs, getTreatmentLogs, getVetVisits, getDocuments, getDocumentUrl } from '@/lib/supabase'
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -16,6 +16,7 @@ export default function VetPrepPage() {
   const [symptoms, setSymptoms] = useState<any[]>([])
   const [treatments, setTreatments] = useState<any[]>([])
   const [vetVisits, setVetVisits] = useState<any[]>([])
+  const [documents, setDocuments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [daysBack, setDaysBack] = useState(30)
 
@@ -23,6 +24,7 @@ export default function VetPrepPage() {
   const [includeSymptoms, setIncludeSymptoms] = useState(true)
   const [includeTreatments, setIncludeTreatments] = useState(true)
   const [includeVisits, setIncludeVisits] = useState(true)
+  const [includeDocs, setIncludeDocs] = useState(true)
 
   useEffect(() => {
     getDogs().then(data => {
@@ -42,10 +44,12 @@ export default function VetPrepPage() {
       getSymptomLogs(activeDogId, 100),
       getTreatmentLogs(activeDogId),
       getVetVisits(activeDogId),
-    ]).then(([s, t, v]) => {
+      getDocuments(activeDogId),
+    ]).then(([s, t, v, d]) => {
       setSymptoms(s)
       setTreatments(t)
       setVetVisits(v)
+      setDocuments(d)
     })
   }, [activeDogId, dogs])
 
@@ -120,6 +124,10 @@ export default function VetPrepPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={includeVisits} onChange={e => setIncludeVisits(e.target.checked)} className="accent-tanzanite-500" />
                 Recent vet visits ({recentVisits.length})
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={includeDocs} onChange={e => setIncludeDocs(e.target.checked)} className="accent-tanzanite-500" />
+                Linked documents ({documents.filter(d => d.vet_visit_id || d.treatment_log_id).length})
               </label>
             </div>
           </div>
@@ -233,6 +241,39 @@ export default function VetPrepPage() {
                 {v.notes && <p className="text-xs text-slate">{v.notes}</p>}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Linked Documents */}
+        {includeDocs && documents.filter(d => d.vet_visit_id || d.treatment_log_id).length > 0 && (
+          <div className="mb-6">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-tanzanite-800 uppercase tracking-wide mb-3">
+              <Paperclip className="w-4 h-4" /> Linked Documents
+            </h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-tanzanite-100">
+                  <th className="text-left py-1.5 text-xs text-slate font-medium">Document</th>
+                  <th className="text-left py-1.5 text-xs text-slate font-medium">Category</th>
+                  <th className="text-left py-1.5 text-xs text-slate font-medium">Date</th>
+                  <th className="text-left py-1.5 text-xs text-slate font-medium">Linked To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.filter(d => d.vet_visit_id || d.treatment_log_id).map(d => (
+                  <tr key={d.id} className="border-b border-tanzanite-50">
+                    <td className="py-1.5 font-medium">{d.file_name}</td>
+                    <td className="py-1.5 text-slate">{d.category}</td>
+                    <td className="py-1.5 text-slate">{d.doc_date ? formatDate(d.doc_date) : '-'}</td>
+                    <td className="py-1.5 text-xs text-slate">
+                      {d.vet_visits && <span>Visit: {formatDate(d.vet_visits.visit_date)}</span>}
+                      {d.treatment_logs && <span>Tx: {d.treatment_logs.treatment_name}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-slate mt-2">Documents available for viewing at whysice.netlify.app/dashboard/documents</p>
           </div>
         )}
 
