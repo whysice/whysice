@@ -11,51 +11,88 @@
   --ice-blue: #A8DDE6;
   --frost: #EDE8F8;
   --body-text: #1A1A2E;
-  --slate: #6C7A89;
+  --slate: #5A6878;
   --alert-red: #D94F4F;
   --soft-gold: #D4A843;
   --success-green: #27AE60;
+}
+
+/* Skip to content link - accessibility */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-tanzanite-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:z-[100] focus:text-sm focus:font-medium;
 }
 
 @layer base {
   body {
     @apply text-body font-sans antialiased;
     background-color: #FAFAFE;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Improved heading contrast */
   h1 {
     @apply text-tanzanite-800 font-bold;
   }
 
   h2 {
-    @apply text-tanzanite-500 font-bold;
+    @apply text-tanzanite-600 font-bold;
   }
 
   h3 {
-    @apply text-tanzanite-400 font-semibold;
+    @apply text-tanzanite-500 font-semibold;
+  }
+
+  /* Global focus-visible styles for keyboard navigation */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-tanzanite-400 ring-offset-2 rounded;
+  }
+
+  /* Remove default focus ring for mouse users */
+  *:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Better selection color */
+  ::selection {
+    background-color: rgba(106, 90, 205, 0.2);
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-tanzanite-500 text-white px-6 py-2.5 rounded-lg font-medium
-           hover:bg-tanzanite-600 transition-colors duration-200
-           focus:outline-none focus:ring-2 focus:ring-tanzanite-400 focus:ring-offset-2;
+    @apply bg-tanzanite-500 text-white px-5 sm:px-6 py-2.5 rounded-lg font-medium
+           hover:bg-tanzanite-600 active:bg-tanzanite-700 transition-all duration-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-400 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-ice-200 text-tanzanite-800 px-6 py-2.5 rounded-lg font-medium
-           hover:bg-ice-300 transition-colors duration-200
-           focus:outline-none focus:ring-2 focus:ring-ice-400 focus:ring-offset-2;
+    @apply bg-ice-200 text-tanzanite-800 px-5 sm:px-6 py-2.5 rounded-lg font-medium
+           hover:bg-ice-300 active:bg-ice-400 transition-all duration-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice-400 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  /* Cards: only add hover shadow on interactive cards */
   .card {
-    @apply bg-white rounded-xl border border-tanzanite-50 p-6
-           shadow-sm hover:shadow-md transition-shadow duration-200;
+    @apply bg-white rounded-xl border border-tanzanite-50 p-4 sm:p-6
+           shadow-sm transition-shadow duration-200;
+  }
+
+  /* Interactive cards get hover effect */
+  a.card, button.card, .card-interactive {
+    @apply hover:shadow-md hover:border-tanzanite-100 cursor-pointer;
   }
 
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
   .badge-condition {
@@ -81,7 +118,7 @@
   .search-input {
     @apply w-full px-4 py-3 rounded-xl border-2 border-tanzanite-50
            focus:border-tanzanite-500 focus:outline-none focus:ring-2 focus:ring-tanzanite-200
-           placeholder:text-slate text-body text-lg transition-all duration-200;
+           placeholder:text-slate/60 text-body text-base sm:text-lg transition-all duration-200;
   }
 
   .toggle-owner {
@@ -90,5 +127,56 @@
 
   .toggle-vet {
     @apply bg-ice-600 text-white;
+  }
+
+  /* Consistent form input styling */
+  .form-input {
+    @apply w-full px-3 py-2.5 rounded-lg border border-tanzanite-100 text-sm
+           focus:border-tanzanite-500 focus:outline-none focus:ring-2 focus:ring-tanzanite-200
+           transition-all duration-150 placeholder:text-slate/50;
+  }
+
+  /* Toast notification animations */
+  @keyframes slideIn {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .toast {
+    animation: slideIn 0.3s ease-out;
+  }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 640px) {
+  .card {
+    border-radius: 0.75rem;
+  }
+
+  /* Ensure tap targets are at least 44px */
+  button, a, select, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+
+  /* Allow smaller min-height for inline text buttons */
+  .text-xs button, button.text-xs {
+    min-height: 36px;
+  }
+}
+
+/* Print styles for vet prep */
+@media print {
+  nav, footer, .print\\:hidden {
+    display: none !important;
+  }
+
+  .card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  body {
+    background: white;
   }
 }

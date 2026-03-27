@@ -129,27 +129,38 @@ export default function DashboardPage() {
     : null
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-tanzanite-800">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-tanzanite-800">Dashboard</h1>
           <p className="text-slate text-sm">Track symptoms, treatments, and vet visits</p>
         </div>
 
-        {/* Dog Selector */}
-        {dogs.length > 1 && (
-          <select
-            value={activeDog?.id || ''}
-            onChange={e => setActiveDog(dogs.find(d => d.id === e.target.value) || null)}
-            className="px-4 py-2 rounded-lg border border-tanzanite-100 text-sm bg-white"
-            aria-label="Select dog"
+        <div className="flex items-center gap-2">
+          {/* Dog Selector */}
+          {dogs.length > 1 && (
+            <select
+              value={activeDog?.id || ''}
+              onChange={e => setActiveDog(dogs.find(d => d.id === e.target.value) || null)}
+              className="px-3 py-2 rounded-lg border border-tanzanite-100 text-sm bg-white"
+              aria-label="Select dog"
+            >
+              {dogs.map(dog => (
+                <option key={dog.id} value={dog.id}>{dog.name}</option>
+              ))}
+            </select>
+          )}
+          <Link href="/admin/review" className="text-xs text-tanzanite-400 hover:text-tanzanite-600 px-2 py-1.5">
+            Admin
+          </Link>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }}
+            className="text-xs text-slate hover:text-red-500 px-2 py-1.5 transition-colors"
           >
-            {dogs.map(dog => (
-              <option key={dog.id} value={dog.id}>{dog.name}</option>
-            ))}
-          </select>
-        )}
+            Sign out
+          </button>
+        </div>
       </div>
 
       {/* No dogs yet */}
@@ -169,17 +180,23 @@ export default function DashboardPage() {
       {activeDog && (
         <>
           {/* Dog Profile Card */}
-          <div className="card mb-8 flex flex-col sm:flex-row items-start gap-6">
-            <div className="w-20 h-20 rounded-full bg-tanzanite-50 flex items-center justify-center flex-shrink-0">
+          <div className="card mb-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+            <div className="w-20 h-20 rounded-full bg-tanzanite-50 flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-tanzanite-100">
               {activeDog.photo_url ? (
-                <img src={activeDog.photo_url} alt={activeDog.name} className="w-20 h-20 rounded-full object-cover" />
+                <img src={activeDog.photo_url} alt={activeDog.name} className="w-full h-full object-cover" />
               ) : (
                 <PawPrint className="w-8 h-8 text-tanzanite-300" />
               )}
             </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-tanzanite-800 mb-1">{activeDog.name}</h2>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-tanzanite-800 mb-1">{activeDog.name}</h2>
+                <Link href={`/dashboard/dogs/new?edit=${activeDog.id}`}
+                  className="text-xs text-tanzanite-500 hover:underline flex-shrink-0 mt-1">
+                  Edit profile
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate">
                 {activeDog.breed && <span>{activeDog.breed}</span>}
                 {activeDog.dob && <span>{DogAge(activeDog.dob)} years old</span>}
                 {activeDog.weight_lbs && <span>{activeDog.weight_lbs} lbs</span>}
@@ -187,7 +204,7 @@ export default function DashboardPage() {
               {activeDog.known_allergies && activeDog.known_allergies.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-xs text-tanzanite-500 font-medium">Allergies:</span>
-                  {activeDog.known_allergies.map(a => (
+                  {activeDog.known_allergies.map((a: string) => (
                     <span key={a} className="badge bg-red-50 text-red-600 text-xs">{a}</span>
                   ))}
                 </div>
