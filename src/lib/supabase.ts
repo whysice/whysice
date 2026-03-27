@@ -177,3 +177,74 @@ export async function getPendingEdits() {
   if (error) throw error
   return data
 }
+
+// ============================================
+// DOCUMENT STORAGE
+// ============================================
+
+export async function uploadDocument(file: File, dogId: string, category: string = 'general') {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Must be logged in to upload')
+
+  const timestamp = Date.now()
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const path = `${user.id}/${dogId}/${category}/${timestamp}_${safeName}`
+
+  const { data, error } = await supabase.storage
+    .from('vet-documents')
+    .upload(path, file)
+
+  if (error) throw error
+  return { path: data.path, name: file.name, size: file.size, type: file.type, category, uploaded_at: new Date().toISOString() }
+}
+
+export async function listDocuments(dogId: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase.storage
+    .from('vet-documents')
+    .list(`${user.id}/${dogId}`, { sortBy: { column: 'created_at', order: 'desc' } })
+
+  if (error) return []
+
+  // List files in all category subfolders
+  const categories = ['general', 'cultures', 'lab-results', 'prescriptions', 'vet-notes', 'imaging']
+  const allFiles: any[] = []
+
+  for (const cat of categories) {
+    const { data: files } = await supabase.storage
+      .from('vet-documents')
+      .list(`${user.id}/${dogId}/${cat}`, { sortBy: { column: 'created_at', order: 'desc' } })
+
+    if (files) {
+      for (const f of files) {
+        if (f.name) {
+          allFiles.push({
+            ...f,
+            category: cat,
+            fullPath: `${user.id}/${dogId}/${cat}/${f.name}`,
+          })
+        }
+      }
+    }
+  }
+
+  return allFiles
+}
+
+export async function getDocumentUrl(path: string) {
+  const { data } = await supabase.storage
+    .from('vet-documents')
+    .createSignedUrl(path, 3600) // 1 hour expiry
+
+  return data?.signedUrl || null
+}
+
+export async function deleteDocument(path: string) {
+  const { error } = await supabase.storage
+    .from('vet-documents')
+    .remove([path])
+
+  if (error) throw error
+}

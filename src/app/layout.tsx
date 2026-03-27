@@ -80,6 +80,7 @@ export default function RootLayout({
                   <Link href="/dashboard" className="block text-sm hover:text-white transition-colors">My Dashboard</Link>
                   <Link href="/dashboard/symptoms" className="block text-sm hover:text-white transition-colors">Symptom Log</Link>
                   <Link href="/dashboard/treatments" className="block text-sm hover:text-white transition-colors">Treatment History</Link>
+                  <Link href="/dashboard/documents" className="block text-sm hover:text-white transition-colors">Vet Documents</Link>
                 </div>
               </div>
             </div>

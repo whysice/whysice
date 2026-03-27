@@ -378,6 +378,23 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* Documents Quick Access */}
+            <div className="card lg:col-span-2">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-tanzanite-50">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-tanzanite-500" />
+                  <h3 className="font-semibold text-tanzanite-800">Vet Documents</h3>
+                </div>
+                <Link href="/dashboard/documents" className="text-xs text-tanzanite-500 font-medium hover:underline">
+                  View all <ChevronRight className="w-3 h-3 inline" />
+                </Link>
+              </div>
+              <p className="text-sm text-slate mb-3">Upload and view vet records, culture results, prescriptions, and lab reports.</p>
+              <Link href="/dashboard/documents" className="btn-secondary text-sm inline-block">
+                <FileText className="w-3.5 h-3.5 inline mr-1" /> Manage Documents
+              </Link>
+            </div>
           </div>
         </>
       )}
