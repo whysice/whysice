@@ -79,8 +79,8 @@ export async function getMedication(slug: string) {
 export async function getMedications() {
   const { data, error } = await supabase
     .from('medications')
-    .select('id, name, slug, brand_names, drug_class, summary_owner, cost_tier')
-    .order('name')
+    .select('id, name, slug, brand_names, drug_class, summary_owner, cost_tier, sort_order')
+    .order('sort_order', { ascending: true })
   if (error) throw error
   return data
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Activity, Camera, X } from 'lucide-react'
+import { ArrowLeft, Plus, Activity, X, Trash2, Edit3, Check } from 'lucide-react'
 import { supabase, getDogs, getSymptomLogs } from '@/lib/supabase'
 
 const BODY_AREAS = ['Front left paw', 'Front right paw', 'Back left paw', 'Back right paw', 'Ears', 'Face', 'Belly', 'Armpits', 'Back', 'Neck', 'Perianal', 'General']
@@ -36,6 +36,8 @@ export default function SymptomsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -60,12 +62,42 @@ export default function SymptomsPage() {
     getSymptomLogs(activeDogId, 50).then(setLogs)
   }, [activeDogId])
 
+  function resetForm() {
+    setDate(new Date().toISOString().split('T')[0])
+    setBodyArea('')
+    setSymptomType('')
+    setSeverity(3)
+    setNotes('')
+    setEnvNotes('')
+    setEditingId(null)
+  }
+
+  function startEdit(entry: SymptomLog) {
+    setEditingId(entry.id)
+    setDate(entry.date)
+    setBodyArea(entry.body_area)
+    setSymptomType(entry.symptom_type)
+    setSeverity(entry.severity)
+    setNotes(entry.notes || '')
+    setEnvNotes(entry.environmental_notes || '')
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function handleDelete(id: string) {
+    const { error } = await supabase.from('symptom_logs').delete().eq('id', id)
+    if (!error) {
+      setLogs(prev => prev.filter(l => l.id !== id))
+    }
+    setDeleteConfirm(null)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!activeDogId || !bodyArea || !symptomType) return
     setSaving(true)
 
-    const { error } = await supabase.from('symptom_logs').insert({
+    const payload = {
       dog_id: activeDogId,
       date,
       body_area: bodyArea,
@@ -73,24 +105,28 @@ export default function SymptomsPage() {
       severity,
       notes: notes || null,
       environmental_notes: envNotes || null,
-    })
+    }
 
-    if (!error) {
-      // Refresh logs
-      const updated = await getSymptomLogs(activeDogId, 50)
-      setLogs(updated)
-      // Reset form
-      setBodyArea('')
-      setSymptomType('')
-      setSeverity(3)
-      setNotes('')
-      setEnvNotes('')
-      setShowForm(false)
+    if (editingId) {
+      const { error } = await supabase.from('symptom_logs').update(payload).eq('id', editingId)
+      if (!error) {
+        const updated = await getSymptomLogs(activeDogId, 50)
+        setLogs(updated)
+        resetForm()
+        setShowForm(false)
+      }
+    } else {
+      const { error } = await supabase.from('symptom_logs').insert(payload)
+      if (!error) {
+        const updated = await getSymptomLogs(activeDogId, 50)
+        setLogs(updated)
+        resetForm()
+        setShowForm(false)
+      }
     }
     setSaving(false)
   }
 
-  // Group logs by date
   const grouped = logs.reduce<Record<string, SymptomLog[]>>((acc, log) => {
     if (!acc[log.date]) acc[log.date] = []
     acc[log.date].push(log)
@@ -110,7 +146,6 @@ export default function SymptomsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/dashboard" className="p-2 rounded-lg hover:bg-tanzanite-50 transition-colors">
           <ArrowLeft className="w-5 h-5 text-tanzanite-500" />
@@ -120,17 +155,18 @@ export default function SymptomsPage() {
           <p className="text-sm text-slate">Track symptoms over time to identify patterns</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm) { resetForm(); setShowForm(false) } else { resetForm(); setShowForm(true) } }}
           className={showForm ? 'btn-secondary text-sm' : 'btn-primary text-sm'}
         >
           {showForm ? <><X className="w-3.5 h-3.5 inline mr-1" /> Cancel</> : <><Plus className="w-3.5 h-3.5 inline mr-1" /> Log Symptom</>}
         </button>
       </div>
 
-      {/* New Entry Form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="card mb-8 border-tanzanite-200">
-          <h2 className="font-semibold text-tanzanite-800 mb-4">New symptom entry</h2>
+          <h2 className="font-semibold text-tanzanite-800 mb-4">
+            {editingId ? 'Edit symptom entry' : 'New symptom entry'}
+          </h2>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
@@ -202,12 +238,11 @@ export default function SymptomsPage() {
           </div>
 
           <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
-            {saving ? 'Saving...' : 'Save Entry'}
+            {saving ? 'Saving...' : editingId ? 'Update Entry' : 'Save Entry'}
           </button>
         </form>
       )}
 
-      {/* Symptom Timeline */}
       {Object.keys(grouped).length === 0 ? (
         <div className="card text-center py-12">
           <Activity className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
@@ -220,13 +255,50 @@ export default function SymptomsPage() {
               <h3 className="text-sm font-semibold text-tanzanite-500 mb-2">{formatDate(date)}</h3>
               <div className="space-y-2">
                 {entries.map(entry => (
-                  <div key={entry.id} className="card py-3 px-4">
+                  <div key={entry.id} className="card py-3 px-4 group">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-body">{entry.symptom_type}</span>
                         <span className="text-xs text-slate">({entry.body_area})</span>
                       </div>
-                      <SeverityDots severity={entry.severity} />
+                      <div className="flex items-center gap-2">
+                        <SeverityDots severity={entry.severity} />
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                          <button
+                            onClick={() => startEdit(entry)}
+                            className="p-1 rounded hover:bg-tanzanite-50 text-slate hover:text-tanzanite-600 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          {deleteConfirm === entry.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleDelete(entry.id)}
+                                className="p-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                title="Confirm delete"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="p-1 rounded hover:bg-gray-100 text-slate transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirm(entry.id)}
+                              className="p-1 rounded hover:bg-red-50 text-slate hover:text-red-500 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     {entry.notes && <p className="text-xs text-slate">{entry.notes}</p>}
                     {entry.environmental_notes && (

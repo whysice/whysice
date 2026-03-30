@@ -32,13 +32,19 @@ export default function MedicationsIndexPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Group by drug class
+  // Group by drug class, preserving sort_order within groups
+  const classOrder = ['Immunotherapy', 'Monoclonal antibody', 'Calcineurin inhibitor', 'Methylxanthine / Immunomodulator', 'JAK inhibitor', 'Second-generation antihistamine', 'First-generation cephalosporin']
   const grouped = medications.reduce<Record<string, MedCard[]>>((acc, med) => {
     const cls = med.drug_class
     if (!acc[cls]) acc[cls] = []
     acc[cls].push(med)
     return acc
   }, {})
+  const sortedClasses = Object.keys(grouped).sort((a, b) => {
+    const ai = classOrder.indexOf(a)
+    const bi = classOrder.indexOf(b)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -51,7 +57,9 @@ export default function MedicationsIndexPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {Object.entries(grouped).map(([drugClass, meds]) => (
+          {sortedClasses.map(drugClass => {
+            const meds = grouped[drugClass]
+            return (
             <div key={drugClass}>
               <h2 className="text-lg font-semibold text-tanzanite-500 mb-3 flex items-center gap-2">
                 <Pill className="w-4 h-4" />
@@ -85,7 +93,8 @@ export default function MedicationsIndexPage() {
                 ))}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

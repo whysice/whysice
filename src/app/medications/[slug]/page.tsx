@@ -219,20 +219,32 @@ export default function MedicationPage() {
           {/* Sources */}
           {med.sources && med.sources.length > 0 && (
             <div className="p-4 bg-tanzanite-50/50 rounded-lg">
-              <h3 className="text-xs font-semibold text-tanzanite-500 uppercase tracking-wide mb-2">Sources</h3>
-              {med.sources.map((source: any, i: number) => (
-                <p key={i} className="text-xs text-slate">
-                  {source.authors && `${source.authors}. `}
-                  {source.title}
-                  {source.journal && `. ${source.journal}`}
-                  {source.year && ` (${source.year})`}
-                  {source.evidence_grade && (
-                    <span className="ml-1 badge text-[10px] bg-tanzanite-100 text-tanzanite-600">
-                      {source.evidence_grade} evidence
-                    </span>
-                  )}
-                </p>
-              ))}
+              <h3 className="text-xs font-semibold text-tanzanite-500 uppercase tracking-wide mb-3">Sources & References</h3>
+              <ol className="space-y-2 list-decimal list-inside">
+                {med.sources.map((source: any, i: number) => (
+                  <li key={i} className="text-xs text-slate leading-relaxed">
+                    {source.authors && <span className="text-body font-medium">{source.authors} </span>}
+                    {source.url ? (
+                      <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-tanzanite-500 hover:text-tanzanite-700 underline underline-offset-2">
+                        {source.title}
+                      </a>
+                    ) : (
+                      <span className="italic">{source.title}</span>
+                    )}
+                    {source.journal && <span>. {source.journal}</span>}
+                    {source.year && <span> ({source.year})</span>}
+                    {source.evidence_grade && (
+                      <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        source.evidence_grade === 'high' ? 'bg-green-100 text-green-700' :
+                        source.evidence_grade === 'moderate' ? 'bg-amber-100 text-amber-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {source.evidence_grade}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
             </div>
           )}
         </div>

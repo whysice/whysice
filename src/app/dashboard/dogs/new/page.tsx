@@ -1,12 +1,27 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, PawPrint, Camera, X, Check, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-export default function DogProfilePage() {
+export default function DogProfilePageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-tanzanite-50 rounded w-1/3" />
+          <div className="h-48 bg-tanzanite-50 rounded-xl" />
+        </div>
+      </div>
+    }>
+      <DogProfilePage />
+    </Suspense>
+  )
+}
+
+function DogProfilePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams?.get('edit') || null
