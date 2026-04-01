@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Pill, X, ExternalLink, Trash2, Archive, Edit3, RotateCcw } from 'lucide-react'
-import { supabase, getDogs, getTreatmentLogs, getMedications } from '@/lib/supabase'
+import { supabase, getDogs, getTreatmentLogs, getMedications, setTreatmentMedications } from '@/lib/supabase'
 
 type TreatmentLog = {
   id: string; treatment_name: string; date_started: string; date_ended: string | null
   dosage: string | null; frequency: string | null; effectiveness: number | null
   side_effects_observed: string | null; notes: string | null
   medications: { name: string; slug: string; brand_names: string[] } | null
+  treatment_medications: { medication_id: string; medications: { id: string; name: string; slug: string; brand_names: string[] } }[]
 }
 
 type MedOption = { id: string; name: string; slug: string; brand_names: string[] | null }
@@ -40,7 +41,7 @@ export default function TreatmentsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [treatmentName, setTreatmentName] = useState('')
-  const [medicationId, setMedicationId] = useState<string>('')
+  const [selectedMedIds, setSelectedMedIds] = useState<string[]>([])
   const [dateStarted, setDateStarted] = useState(new Date().toISOString().split('T')[0])
   const [dateEnded, setDateEnded] = useState('')
   const [dosage, setDosage] = useState('')
@@ -68,15 +69,10 @@ export default function TreatmentsPage() {
     setTreatments(data)
   }
 
-  useEffect(() => {
-    if (medicationId && !editingId) {
-      const med = wikiMeds.find(m => m.id === medicationId)
-      if (med) setTreatmentName(med.brand_names?.[0] || med.name)
-    }
-  }, [medicationId, wikiMeds, editingId])
+  // No auto-fill for multi-select — user names the treatment
 
   function resetForm() {
-    setTreatmentName(''); setMedicationId(''); setDateStarted(new Date().toISOString().split('T')[0])
+    setTreatmentName(''); setSelectedMedIds([]); setDateStarted(new Date().toISOString().split('T')[0])
     setDateEnded(''); setDosage(''); setFrequency(''); setEffectiveness(0)
     setSideEffects(''); setNotes(''); setEditingId(null)
   }
@@ -84,7 +80,7 @@ export default function TreatmentsPage() {
   function startEdit(t: TreatmentLog) {
     setEditingId(t.id)
     setTreatmentName(t.treatment_name)
-    setMedicationId('')
+    setSelectedMedIds(t.treatment_medications?.map(tm => tm.medication_id) || (t.medications ? [t.medications.slug] : []))
     setDateStarted(t.date_started)
     setDateEnded(t.date_ended || '')
     setDosage(t.dosage || '')
@@ -103,7 +99,7 @@ export default function TreatmentsPage() {
 
     const payload = {
       treatment_name: treatmentName,
-      medication_id: medicationId || null,
+      medication_id: selectedMedIds.length === 1 ? selectedMedIds[0] : null,
       date_started: dateStarted,
       date_ended: dateEnded || null,
       dosage: dosage || null,
@@ -113,10 +109,17 @@ export default function TreatmentsPage() {
       notes: notes || null,
     }
 
+    let treatmentId = editingId
     if (editingId) {
       await supabase.from('treatment_logs').update(payload).eq('id', editingId)
     } else {
-      await supabase.from('treatment_logs').insert({ ...payload, dog_id: activeDogId })
+      const { data } = await supabase.from('treatment_logs').insert({ ...payload, dog_id: activeDogId }).select('id').single()
+      treatmentId = data?.id || null
+    }
+
+    // Set multi-medication links
+    if (treatmentId && selectedMedIds.length > 0) {
+      await setTreatmentMedications(treatmentId, selectedMedIds)
     }
 
     await refreshTreatments()
@@ -181,16 +184,32 @@ export default function TreatmentsPage() {
           </h2>
 
           <div className="mb-4">
-            <label htmlFor="wiki-med" className="block text-sm font-medium text-body mb-1">
-              Link to wiki medication <span className="text-slate font-normal">(optional)</span>
+            <label className="block text-sm font-medium text-body mb-1">
+              Link to wiki medications <span className="text-slate font-normal">(select all that apply)</span>
             </label>
-            <select id="wiki-med" value={medicationId} onChange={e => setMedicationId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
-              <option value="">None - custom treatment</option>
+            <div className="max-h-40 overflow-y-auto border border-tanzanite-100 rounded-lg p-2 space-y-1">
               {wikiMeds.map(med => (
-                <option key={med.id} value={med.id}>{med.brand_names?.[0] || med.name} ({med.name})</option>
+                <label key={med.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-tanzanite-50/50 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedMedIds.includes(med.id)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedMedIds(prev => [...prev, med.id])
+                      } else {
+                        setSelectedMedIds(prev => prev.filter(id => id !== med.id))
+                      }
+                    }}
+                    className="accent-tanzanite-500 w-4 h-4 rounded"
+                  />
+                  <span className="text-body">{med.brand_names?.[0] || med.name}</span>
+                  <span className="text-xs text-slate">({med.name})</span>
+                </label>
               ))}
-            </select>
+            </div>
+            {selectedMedIds.length > 0 && (
+              <p className="text-xs text-tanzanite-500 mt-1">{selectedMedIds.length} medication{selectedMedIds.length !== 1 ? 's' : ''} linked</p>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -344,12 +363,23 @@ function TreatmentCard({ treatment: t, isPast, onEdit, onMarkPast, onReactivate,
 
       {t.side_effects_observed && <p className="text-xs text-red-500 mt-1">Side effects: {t.side_effects_observed}</p>}
       {t.notes && <p className="text-xs text-slate mt-1">{t.notes}</p>}
-      {t.medications && (
+
+      {/* Show linked medications (multi or legacy single) */}
+      {t.treatment_medications && t.treatment_medications.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {t.treatment_medications.map(tm => (
+            <Link key={tm.medication_id} href={`/medications/${tm.medications.slug}`}
+              className="inline-flex items-center gap-1 text-xs text-tanzanite-500 hover:underline bg-tanzanite-50/50 px-2 py-1 rounded">
+              <ExternalLink className="w-3 h-3" /> {tm.medications.brand_names?.[0] || tm.medications.name}
+            </Link>
+          ))}
+        </div>
+      ) : t.medications ? (
         <Link href={`/medications/${t.medications.slug}`}
           className="inline-flex items-center gap-1 text-xs text-tanzanite-500 hover:underline mt-2">
           <ExternalLink className="w-3 h-3" /> Wiki: {t.medications.brand_names?.[0] || t.medications.name}
         </Link>
-      )}
+      ) : null}
 
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-tanzanite-50">
         <button onClick={onEdit}

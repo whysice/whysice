@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Upload, FileText, Image, Trash2, Eye, X, Filter, Search, Link2, Calendar, Pill, Edit3, Tag } from 'lucide-react'
+import { ArrowLeft, Upload, FileText, Image, Trash2, Eye, X, Filter, Search, Link2, Calendar, Pill, Edit3, Tag, Check, Loader2 } from 'lucide-react'
 import { supabase, getDogs, getDocuments, uploadDocument, getDocumentUrl, deleteDocument, updateDocumentMetadata, searchDocuments, getVetVisits, getTreatmentLogs } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -321,7 +321,8 @@ export default function DocumentsPage() {
                             <Icon className="w-4 h-4 text-tanzanite-500" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-body">{doc.file_name}</p>
+                            <p className="text-sm font-medium text-body">{doc.display_name || doc.file_name}</p>
+                            {doc.display_name && <p className="text-[10px] text-slate">{doc.file_name}</p>}
                             {doc.description && <p className="text-xs text-slate">{doc.description}</p>}
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate mt-1">
                               {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
@@ -358,46 +359,19 @@ export default function DocumentsPage() {
 
                         {/* Edit panel */}
                         {isEditing && (
-                          <div className="mt-3 pt-3 border-t border-tanzanite-50 grid sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs text-slate mb-1">Description</label>
-                              <input type="text" defaultValue={doc.description || ''}
-                                onBlur={e => handleUpdateLink(doc.id, 'description', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs" />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate mb-1">Document date</label>
-                              <input type="date" defaultValue={doc.doc_date || ''}
-                                onChange={e => handleUpdateLink(doc.id, 'doc_date', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs" />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate mb-1">Link to vet visit</label>
-                              <select defaultValue={doc.vet_visit_id || ''}
-                                onChange={e => handleUpdateLink(doc.id, 'vet_visit_id', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs">
-                                <option value="">None</option>
-                                {vetVisits.map(v => (
-                                  <option key={v.id} value={v.id}>
-                                    {formatDate(v.visit_date)} - {v.reason?.substring(0, 35)}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate mb-1">Link to treatment</label>
-                              <select defaultValue={doc.treatment_log_id || ''}
-                                onChange={e => handleUpdateLink(doc.id, 'treatment_log_id', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs">
-                                <option value="">None</option>
-                                {treatments.map(t => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.treatment_name} ({formatDate(t.date_started)})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
+                          <EditPanel
+                            doc={doc}
+                            vetVisits={vetVisits}
+                            treatments={treatments}
+                            onSave={async (updates) => {
+                              try {
+                                await updateDocumentMetadata(doc.id, updates)
+                                await refreshData()
+                                setEditingDoc(null)
+                              } catch (err) { console.error('Update failed:', err) }
+                            }}
+                            onCancel={() => setEditingDoc(null)}
+                          />
                         )}
 
                         {/* Extraction status and AI-parsed data */}
@@ -476,6 +450,110 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function EditPanel({ doc, vetVisits, treatments, onSave, onCancel }: {
+  doc: any
+  vetVisits: any[]
+  treatments: any[]
+  onSave: (updates: any) => Promise<void>
+  onCancel: () => void
+}) {
+  const [displayName, setDisplayName] = useState(doc.display_name || '')
+  const [description, setDescription] = useState(doc.description || '')
+  const [docDate, setDocDate] = useState(doc.doc_date || '')
+  const [visitId, setVisitId] = useState(doc.vet_visit_id || '')
+  const [treatmentId, setTreatmentId] = useState(doc.treatment_log_id || '')
+  const [category, setCategory] = useState(doc.category || 'general')
+  const [saving, setSaving] = useState(false)
+
+  function fmtDate(dateStr: string) {
+    return new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const CATS = [
+    { value: 'general', label: 'General' },
+    { value: 'cultures', label: 'Culture Results' },
+    { value: 'lab-results', label: 'Lab Results' },
+    { value: 'prescriptions', label: 'Prescriptions' },
+    { value: 'vet-notes', label: 'Vet Notes' },
+    { value: 'imaging', label: 'Imaging / Photos' },
+  ]
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave({
+      display_name: displayName.trim() || null,
+      description: description.trim() || null,
+      doc_date: docDate || null,
+      vet_visit_id: visitId || null,
+      treatment_log_id: treatmentId || null,
+      category,
+    })
+    setSaving(false)
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-tanzanite-50">
+      <div className="grid sm:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs text-slate mb-1">Display name (rename)</label>
+          <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+            placeholder={doc.file_name}
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate mb-1">Category</label>
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
+            {CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate mb-1">Description</label>
+          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="Brief description..."
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate mb-1">Document date</label>
+          <input type="date" value={docDate} onChange={e => setDocDate(e.target.value)}
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate mb-1">Link to vet visit</label>
+          <select value={visitId} onChange={e => setVisitId(e.target.value)}
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
+            <option value="">None</option>
+            {vetVisits.map((v: any) => (
+              <option key={v.id} value={v.id}>{fmtDate(v.visit_date)} - {v.reason?.substring(0, 35)}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate mb-1">Link to treatment</label>
+          <select value={treatmentId} onChange={e => setTreatmentId(e.target.value)}
+            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
+            <option value="">None</option>
+            {treatments.map((t: any) => (
+              <option key={t.id} value={t.id}>{t.treatment_name} ({fmtDate(t.date_started)})</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-tanzanite-500 text-white text-xs font-medium hover:bg-tanzanite-600 transition-colors disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+        <button onClick={onCancel}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate hover:bg-tanzanite-50 transition-colors">
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }

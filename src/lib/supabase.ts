@@ -125,12 +125,26 @@ export async function getTreatmentLogs(dogId: string) {
     .from('treatment_logs')
     .select(`
       *,
-      medications (name, slug, brand_names)
+      medications (name, slug, brand_names),
+      treatment_medications (
+        medication_id,
+        medications (id, name, slug, brand_names)
+      )
     `)
     .eq('dog_id', dogId)
     .order('date_started', { ascending: false })
   if (error) throw error
   return data
+}
+
+export async function setTreatmentMedications(treatmentId: string, medicationIds: string[]) {
+  // Clear existing links
+  await supabase.from('treatment_medications').delete().eq('treatment_log_id', treatmentId)
+  // Insert new links
+  if (medicationIds.length > 0) {
+    const rows = medicationIds.map(mid => ({ treatment_log_id: treatmentId, medication_id: mid }))
+    await supabase.from('treatment_medications').insert(rows)
+  }
 }
 
 export async function getVetVisits(dogId: string) {
@@ -305,8 +319,9 @@ export async function getDocumentsForTreatment(treatmentId: string) {
 }
 
 export async function updateDocumentMetadata(docId: string, updates: {
-  description?: string
-  doc_date?: string
+  display_name?: string | null
+  description?: string | null
+  doc_date?: string | null
   vet_visit_id?: string | null
   treatment_log_id?: string | null
   category?: string
