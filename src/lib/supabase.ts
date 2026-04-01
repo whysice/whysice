@@ -141,7 +141,27 @@ export async function getTreatmentLogs(dogId: string) {
     `)
     .eq('dog_id', dogId)
     .order('date_started', { ascending: false })
-  if (error) throw error
+  if (error) {
+    // Fallback without treatment_medications join if it fails
+    const { data: fallback, error: fbError } = await supabase
+      .from('treatment_logs')
+      .select('*, medications (name, slug, brand_names)')
+      .eq('dog_id', dogId)
+      .order('date_started', { ascending: false })
+    if (fbError) throw fbError
+    return (fallback || []).map(t => ({ ...t, treatment_medications: [] }))
+  }
+  return data
+}
+
+// Lightweight treatment list (just id, name, date) for dropdowns
+export async function getTreatmentListSimple(dogId: string) {
+  const { data, error } = await supabase
+    .from('treatment_logs')
+    .select('id, treatment_name, date_started')
+    .eq('dog_id', dogId)
+    .order('date_started', { ascending: false })
+  if (error) return []
   return data
 }
 

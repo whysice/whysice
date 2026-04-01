@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Upload, FileText, Image, Trash2, Eye, X, Filter, Search, Link2, Calendar, Pill, Edit3, Tag, Check, Loader2 } from 'lucide-react'
-import { supabase, getDogs, getDocuments, uploadDocument, getDocumentUrl, deleteDocument, updateDocumentMetadata, searchDocuments, getVetVisits, getTreatmentLogs } from '@/lib/supabase'
+import { supabase, getDogs, getDocuments, uploadDocument, getDocumentUrl, deleteDocument, updateDocumentMetadata, searchDocuments, getVetVisits, getTreatmentListSimple } from '@/lib/supabase'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -72,7 +72,7 @@ export default function DocumentsPage() {
     const [docs, visits, treats] = await Promise.all([
       getDocuments(activeDogId),
       getVetVisits(activeDogId),
-      getTreatmentLogs(activeDogId),
+      getTreatmentListSimple(activeDogId),
     ])
     setDocuments(docs)
     setVetVisits(visits)
