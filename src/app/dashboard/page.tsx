@@ -72,12 +72,21 @@ export default function DashboardPage() {
   const [vetVisits, setVetVisits] = useState<VetVisit[]>([])
   const [dataLoading, setDataLoading] = useState(false)
 
-  // Auth check
+  // Auth check - listen for session changes (handles page reload + magic link callback)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
+    // First check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null)
       setAuthLoading(false)
     })
+
+    // Listen for changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+      setAuthLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Load dogs when authenticated

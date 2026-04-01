@@ -46,11 +46,11 @@ export default function AdminReviewPage() {
   // Admin check - for now, first user is admin (you)
   useEffect(() => {
     async function checkAdmin() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { setLoading(false); return }
       // Simple admin check: you're the first user
       const { data } = await supabase.from('dogs').select('user_id').limit(1)
-      if (data && data.length > 0 && data[0].user_id === user.id) {
+      if (data && data.length > 0 && data[0].user_id === session.user.id) {
         setIsAdmin(true)
       }
       setLoading(false)
