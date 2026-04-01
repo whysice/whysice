@@ -280,7 +280,7 @@ export default function DashboardPage() {
               {recentSymptoms.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-slate mb-3">No symptoms logged yet.</p>
-                  <Link href="/dashboard/symptoms/new" className="btn-secondary text-sm inline-block">
+                  <Link href="/dashboard/symptoms" className="btn-secondary text-sm inline-block">
                     <Plus className="w-3.5 h-3.5 inline mr-1" /> Log Symptom
                   </Link>
                 </div>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                       <SeverityDots severity={s.severity} />
                     </div>
                   ))}
-                  <Link href="/dashboard/symptoms/new" className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-500 hover:bg-tanzanite-50 transition-colors">
+                  <Link href="/dashboard/symptoms" className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-500 hover:bg-tanzanite-50 transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Log new symptom
                   </Link>
                 </div>
@@ -376,7 +376,7 @@ export default function DashboardPage() {
               {vetVisits.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-slate mb-3">No vet visits recorded yet.</p>
-                  <Link href="/dashboard/visits/new" className="btn-secondary text-sm inline-block">
+                  <Link href="/dashboard/visits" className="btn-secondary text-sm inline-block">
                     <Plus className="w-3.5 h-3.5 inline mr-1" /> Add Visit
                   </Link>
                 </div>
