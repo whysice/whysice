@@ -24,20 +24,6 @@ function formatDate(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function EffectivenessDots({ rating }: { rating: number | null }) {
-  if (!rating) return <span className="text-xs text-slate">Not rated</span>
-  return (
-    <div className="flex items-center gap-1">
-      <div className="flex gap-0.5" aria-hidden="true">
-        {[1,2,3,4,5].map(i => (
-          <span key={i} className={`w-2 h-2 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
-        ))}
-      </div>
-      <span className="sr-only">Effectiveness: {rating} out of 5</span>
-    </div>
-  )
-}
-
 export default function TreatmentsPage() {
   const [dogs, setDogs] = useState<any[]>([])
   const [activeDogId, setActiveDogId] = useState<string>('')
