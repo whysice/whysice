@@ -180,3 +180,107 @@
     background: white;
   }
 }
+/* ============================================
+   UCD OPTIMIZATION CSS ADDITIONS
+   Add these to your existing globals.css
+   ============================================ */
+
+/* Toast notification animations (replaces existing stub) */
+@keyframes toastSlideIn {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toastSlideOut {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(16px); opacity: 0; }
+}
+
+.toast {
+  animation: toastSlideIn 0.25s ease-out;
+}
+
+/* Confirm dialog entrance */
+@keyframes confirmExpand {
+  from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; }
+  to { opacity: 1; max-height: 200px; }
+}
+
+[role="alertdialog"] {
+  animation: confirmExpand 0.2s ease-out;
+}
+
+/* Severity picker transitions */
+[role="radiogroup"] button {
+  transition: all 0.15s ease-out;
+}
+
+[role="radiogroup"] button:active {
+  transform: scale(0.95);
+}
+
+/* Upload progress bar smooth fill */
+[role="progressbar"] {
+  transition: width 0.3s ease-out;
+}
+
+/* Breadcrumb separator fade */
+nav[aria-label="Breadcrumb"] li {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Post-upload prompt animation */
+@keyframes promptSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.post-upload-prompt {
+  animation: promptSlide 0.2s ease-out;
+}
+
+/* Focus ring for severity picker on mobile */
+@media (max-width: 640px) {
+  [role="radiogroup"] button {
+    min-height: 52px;
+  }
+}
+
+/* Print enhancements for vet prep export */
+@media print {
+  nav, footer, .print\:hidden {
+    display: none !important;
+  }
+
+  .card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  body {
+    background: white;
+    font-size: 11pt;
+  }
+
+  /* Ensure severity badges print with color */
+  .badge, [class*="bg-green"], [class*="bg-amber"], [class*="bg-red"],
+  [class*="bg-lime"], [class*="bg-orange"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page breaks */
+  h3 {
+    page-break-after: avoid;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
