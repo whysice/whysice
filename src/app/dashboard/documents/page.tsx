@@ -4,6 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Upload, FileText, Image, Trash2, Eye, X, Filter, Search, Link2, Calendar, Pill, Edit3, Tag, Check, Loader2 } from 'lucide-react'
 import { supabase, getDogs, getDocuments, uploadDocument, getDocumentUrl, deleteDocument, updateDocumentMetadata, searchDocuments, getVetVisits, getTreatmentListSimple } from '@/lib/supabase'
+import { useToast } from '@/contexts/ToastContext'
+import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
+import { EmptyState } from '@/components/EmptyState'
+import { UploadProgress, PostUploadPrompt, inferCategoryFromFilename } from '@/components/UploadProgress'
+import type { ReactNode } from 'react'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -31,6 +37,13 @@ function getFileIcon(name: string) {
   return FileText
 }
 
+type UploadFileState = {
+  file: File
+  progress: number
+  status: 'pending' | 'uploading' | 'done' | 'error'
+  error?: string
+}
+
 export default function DocumentsPage() {
   const [dogs, setDogs] = useState<any[]>([])
   const [activeDogId, setActiveDogId] = useState('')
@@ -47,6 +60,10 @@ export default function DocumentsPage() {
   const [editingDoc, setEditingDoc] = useState<any | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Integrations
+  const { showToast } = useToast()
+  const { confirmingId, requestConfirm, cancelConfirm, isConfirming } = useConfirmDialog()
+
   // Upload form state
   const [uploadCategory, setUploadCategory] = useState('general')
   const [uploadDescription, setUploadDescription] = useState('')
@@ -54,6 +71,10 @@ export default function DocumentsPage() {
   const [uploadVisitId, setUploadVisitId] = useState('')
   const [uploadTreatmentId, setUploadTreatmentId] = useState('')
   const [showUploadOptions, setShowUploadOptions] = useState(false)
+
+  // #5 Upload progress tracking
+  const [uploadFiles, setUploadFiles] = useState<UploadFileState[]>([])
+  const [lastUploadedFile, setLastUploadedFile] = useState<string | null>(null)
 
   useEffect(() => {
     getDogs().then(data => {
@@ -79,25 +100,67 @@ export default function DocumentsPage() {
     setTreatments(treats)
   }
 
+  // #5 Enhanced upload with progress and auto-categorization
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0 || !activeDogId) return
 
     setUploading(true)
+    const fileStates: UploadFileState[] = Array.from(files).map(f => ({
+      file: f,
+      progress: 0,
+      status: 'pending' as const,
+    }))
+    setUploadFiles(fileStates)
+
     for (let i = 0; i < files.length; i++) {
+      // Auto-suggest category from filename
+      const suggestedCategory = inferCategoryFromFilename(files[i].name)
+      const effectiveCategory = uploadCategory === 'general' && suggestedCategory !== 'general'
+        ? suggestedCategory
+        : uploadCategory
+
+      // Update status to uploading
+      setUploadFiles(prev => prev.map((f, idx) =>
+        idx === i ? { ...f, status: 'uploading', progress: 20 } : f
+      ))
+
       try {
-        await uploadDocument(files[i], activeDogId, uploadCategory, {
+        setUploadFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, progress: 50 } : f
+        ))
+
+        await uploadDocument(files[i], activeDogId, effectiveCategory, {
           description: uploadDescription || undefined,
           doc_date: uploadDate || undefined,
           vet_visit_id: uploadVisitId || undefined,
           treatment_log_id: uploadTreatmentId || undefined,
         })
+
+        setUploadFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, status: 'done', progress: 100 } : f
+        ))
       } catch (err) {
         console.error('Upload failed:', err)
+        setUploadFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, status: 'error', error: 'Upload failed' } : f
+        ))
+        showToast(`Failed to upload ${files[i].name}`, 'error')
       }
     }
+
     await refreshData()
     setUploading(false)
+
+    const successCount = fileStates.length // will be updated via state
+    setLastUploadedFile(files[0].name)
+
+    // Clear progress after delay
+    setTimeout(() => {
+      setUploadFiles([])
+    }, 3000)
+
+    showToast(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`, 'success')
     setUploadDescription('')
     setUploadDate('')
     setUploadVisitId('')
@@ -125,13 +188,15 @@ export default function DocumentsPage() {
     }
   }
 
+  // #2 Inline confirm for delete
   async function handleDelete(doc: any) {
-    if (!confirm(`Delete ${doc.file_name}?`)) return
     try {
       await deleteDocument(doc.id, doc.storage_path)
       await refreshData()
+      cancelConfirm()
+      showToast(`${doc.file_name} deleted`, 'success')
     } catch (err) {
-      console.error('Delete failed:', err)
+      showToast('Failed to delete document', 'error')
     }
   }
 
@@ -140,14 +205,16 @@ export default function DocumentsPage() {
       await updateDocumentMetadata(docId, { [field]: value || null })
       await refreshData()
       setEditingDoc(null)
+      showToast('Document updated', 'success')
     } catch (err) {
-      console.error('Update failed:', err)
+      showToast('Failed to update document', 'error')
     }
   }
 
-  const displayDocs = searchResults || (filterCategory === 'all' ? documents : documents.filter(d => d.category === filterCategory))
+  const displayDocs = searchResults || (filterCategory === 'all'
+    ? documents
+    : documents.filter(d => d.category === filterCategory))
 
-  // Group by category
   const grouped = displayDocs.reduce<Record<string, any[]>>((acc, doc) => {
     const cat = doc.category || 'general'
     if (!acc[cat]) acc[cat] = []
@@ -168,35 +235,30 @@ export default function DocumentsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
+      <Breadcrumbs crumbs={[{ label: 'Documents' }]} />
+
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard" className="p-2 rounded-lg hover:bg-tanzanite-50 transition-colors">
+        <Link href="/dashboard" className="p-2 rounded-lg hover:bg-tanzanite-50 transition-colors" aria-label="Back to dashboard">
           <ArrowLeft className="w-5 h-5 text-tanzanite-500" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-tanzanite-800">Vet Documents</h1>
-          <p className="text-sm text-slate">Upload, search, and link vet records to visits and treatments</p>
+          <h1 className="text-2xl font-bold text-tanzanite-800">Documents</h1>
+          <p className="text-sm text-slate">Upload and organize vet records, lab results, and photos</p>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="mb-6">
-        <div className="relative">
+      {/* Search */}
+      <form onSubmit={handleSearch} className="mb-6 flex gap-2">
+        <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate" />
-          <input
-            type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search inside documents..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200"
-          />
-          {searchResults && (
-            <button type="button" onClick={() => { setSearchResults(null); setSearchQuery('') }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-tanzanite-500 hover:underline">
-              Clear
-            </button>
-          )}
+          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search documents..." aria-label="Search documents"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
         </div>
+        <button type="submit" className="btn-secondary text-sm">Search</button>
         {searchResults && (
-          <p className="text-xs text-slate mt-1">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"</p>
+          <button type="button" onClick={() => { setSearchResults(null); setSearchQuery('') }}
+            className="text-xs text-tanzanite-500 hover:underline">Clear</button>
         )}
       </form>
 
@@ -272,11 +334,16 @@ export default function DocumentsPage() {
           </div>
         )}
 
-        {uploading && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-tanzanite-500">
-            <div className="w-4 h-4 border-2 border-tanzanite-500 border-t-transparent rounded-full animate-spin" />
-            Uploading...
-          </div>
+        {/* #5 Upload progress */}
+        <UploadProgress files={uploadFiles} />
+
+        {/* #5 Post-upload metadata prompt */}
+        {lastUploadedFile && !uploading && !showUploadOptions && uploadFiles.length === 0 && (
+          <PostUploadPrompt
+            fileName={lastUploadedFile}
+            onAddMetadata={() => { setShowUploadOptions(true); setLastUploadedFile(null) }}
+            onDismiss={() => setLastUploadedFile(null)}
+          />
         )}
       </div>
 
@@ -295,12 +362,12 @@ export default function DocumentsPage() {
 
       {/* Documents List */}
       {displayDocs.length === 0 ? (
-        <div className="card text-center py-12">
-          <FileText className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
-          <p className="text-slate text-sm">
-            {searchResults ? 'No documents match your search.' : 'No documents uploaded yet.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={searchResults ? 'No results found' : 'No documents uploaded yet'}
+          message={searchResults ? 'No documents match your search.' : 'Upload vet records, lab results, or photos to keep everything organized.'}
+          motivation={searchResults ? undefined : 'Having documents linked to visits and treatments gives your vet a complete picture at every appointment.'}
+        />
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([category, docs]) => {
@@ -313,7 +380,6 @@ export default function DocumentsPage() {
                 <div className="space-y-2">
                   {docs.map((doc: any) => {
                     const Icon = getFileIcon(doc.file_name)
-                    const isEditing = editingDoc?.id === doc.id
                     return (
                       <div key={doc.id} className="card py-3 px-4">
                         <div className="flex items-start gap-3">
@@ -330,7 +396,7 @@ export default function DocumentsPage() {
                               {doc.vet_visits && (
                                 <span className="text-tanzanite-500">
                                   <Calendar className="w-3 h-3 inline mr-0.5" />
-                                  {formatDate(doc.vet_visits.visit_date)} - {doc.vet_visits.reason?.substring(0, 30)}
+                                  {formatDate(doc.vet_visits.visit_date)}
                                 </span>
                               )}
                               {doc.treatment_logs && (
@@ -342,87 +408,24 @@ export default function DocumentsPage() {
                             </div>
                           </div>
                           <div className="flex gap-1 flex-shrink-0">
-                            <button onClick={() => handleView(doc)} className="p-1.5 rounded hover:bg-tanzanite-50" title="View"
-                              aria-label={`View ${doc.file_name}`}>
-                              <Eye className="w-4 h-4 text-tanzanite-500" />
+                            <button onClick={() => handleView(doc)}
+                              className="p-1.5 rounded hover:bg-tanzanite-50 text-slate" aria-label={`View ${doc.file_name}`}>
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setEditingDoc(isEditing ? null : doc)} className="p-1.5 rounded hover:bg-tanzanite-50" title="Edit links"
-                              aria-label={`Edit links for ${doc.file_name}`}>
-                              <Link2 className="w-4 h-4 text-tanzanite-400" />
-                            </button>
-                            <button onClick={() => handleDelete(doc)} className="p-1.5 rounded hover:bg-red-50" title="Delete"
-                              aria-label={`Delete ${doc.file_name}`}>
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                            <button onClick={() => requestConfirm(doc.id)}
+                              className="p-1.5 rounded hover:bg-red-50 text-slate" aria-label={`Delete ${doc.file_name}`}>
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
-                        {/* Edit panel */}
-                        {isEditing && (
-                          <EditPanel
-                            doc={doc}
-                            vetVisits={vetVisits}
-                            treatments={treatments}
-                            onSave={async (updates) => {
-                              try {
-                                await updateDocumentMetadata(doc.id, updates)
-                                await refreshData()
-                                setEditingDoc(null)
-                              } catch (err) { console.error('Update failed:', err) }
-                            }}
-                            onCancel={() => setEditingDoc(null)}
+                        {isConfirming(doc.id) && (
+                          <ConfirmDialog
+                            message={`Delete ${doc.file_name}? This cannot be undone.`}
+                            confirmLabel="Delete"
+                            onConfirm={() => handleDelete(doc)}
+                            onCancel={cancelConfirm}
                           />
-                        )}
-
-                        {/* Extraction status and AI-parsed data */}
-                        {doc.extraction_status === 'processing' && (
-                          <div className="mt-2 flex items-center gap-2 text-xs text-tanzanite-500">
-                            <div className="w-3 h-3 border-2 border-tanzanite-500 border-t-transparent rounded-full animate-spin" />
-                            Extracting text and analyzing content...
-                          </div>
-                        )}
-                        {doc.extraction_status === 'completed' && doc.extracted_data && (
-                          <div className="mt-2 pt-2 border-t border-tanzanite-50">
-                            {doc.extracted_data.summary && (
-                              <p className="text-xs text-body mb-1">{doc.extracted_data.summary}</p>
-                            )}
-                            <div className="flex flex-wrap gap-1">
-                              {doc.extracted_data.document_type && (
-                                <span className="badge bg-tanzanite-50 text-tanzanite-600 text-[10px]">
-                                  {doc.extracted_data.document_type.replace(/_/g, ' ')}
-                                </span>
-                              )}
-                              {doc.extracted_data.diagnoses_mentioned?.map((d: string, i: number) => (
-                                <span key={i} className="badge bg-ice-50 text-ice-700 text-[10px]">{d}</span>
-                              ))}
-                            </div>
-                            {doc.extracted_data.culture_results?.organisms && (
-                              <div className="mt-2 p-2 bg-tanzanite-50/30 rounded-lg">
-                                <p className="text-[10px] font-semibold text-tanzanite-600 uppercase mb-1">Culture results</p>
-                                {doc.extracted_data.culture_results.organisms.map((org: any, i: number) => (
-                                  <div key={i} className="mb-1.5 last:mb-0">
-                                    <p className="text-xs font-medium text-body">{org.name} {org.growth && `(${org.growth})`}</p>
-                                    {org.sensitivities && (
-                                      <div className="flex flex-wrap gap-1 mt-0.5">
-                                        {org.sensitivities.filter((s: any) => s.result === 'S').map((s: any, j: number) => (
-                                          <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700">{s.antibiotic} S</span>
-                                        ))}
-                                        {org.sensitivities.filter((s: any) => s.result === 'R').slice(0, 5).map((s: any, j: number) => (
-                                          <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600">{s.antibiotic} R</span>
-                                        ))}
-                                        {org.sensitivities.filter((s: any) => s.result === 'R').length > 5 && (
-                                          <span className="text-[10px] text-red-400">+{org.sensitivities.filter((s: any) => s.result === 'R').length - 5} more R</span>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {doc.extraction_status === 'failed' && (
-                          <p className="mt-2 text-xs text-red-400">Text extraction failed</p>
                         )}
                       </div>
                     )
@@ -434,126 +437,19 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Image Preview Modal */}
+      {/* Image preview modal */}
       {previewUrl && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
-          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-tanzanite-50">
-              <p className="text-sm font-medium text-body truncate">{previewName}</p>
-              <button onClick={() => setPreviewUrl(null)} className="p-1 rounded hover:bg-tanzanite-50">
-                <X className="w-5 h-5 text-slate" />
-              </button>
-            </div>
-            <div className="overflow-auto max-h-[80vh]">
-              <img src={previewUrl} alt={previewName} className="w-full h-auto" />
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
+          <div className="relative max-w-3xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPreviewUrl(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center"
+              aria-label="Close preview">
+              <X className="w-4 h-4" />
+            </button>
+            <img src={previewUrl} alt={previewName} className="max-w-full max-h-[85vh] rounded-lg shadow-xl" />
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function EditPanel({ doc, vetVisits, treatments, onSave, onCancel }: {
-  doc: any
-  vetVisits: any[]
-  treatments: any[]
-  onSave: (updates: any) => Promise<void>
-  onCancel: () => void
-}) {
-  const [displayName, setDisplayName] = useState(doc.display_name || '')
-  const [description, setDescription] = useState(doc.description || '')
-  const [docDate, setDocDate] = useState(doc.doc_date || '')
-  const [visitId, setVisitId] = useState(doc.vet_visit_id || '')
-  const [treatmentId, setTreatmentId] = useState(doc.treatment_log_id || '')
-  const [category, setCategory] = useState(doc.category || 'general')
-  const [saving, setSaving] = useState(false)
-
-  function fmtDate(dateStr: string) {
-    return new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
-  const CATS = [
-    { value: 'general', label: 'General' },
-    { value: 'cultures', label: 'Culture Results' },
-    { value: 'lab-results', label: 'Lab Results' },
-    { value: 'prescriptions', label: 'Prescriptions' },
-    { value: 'vet-notes', label: 'Vet Notes' },
-    { value: 'imaging', label: 'Imaging / Photos' },
-  ]
-
-  async function handleSave() {
-    setSaving(true)
-    await onSave({
-      display_name: displayName.trim() || null,
-      description: description.trim() || null,
-      doc_date: docDate || null,
-      vet_visit_id: visitId || null,
-      treatment_log_id: treatmentId || null,
-      category,
-    })
-    setSaving(false)
-  }
-
-  return (
-    <div className="mt-3 pt-3 border-t border-tanzanite-50">
-      <div className="grid sm:grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="block text-xs text-slate mb-1">Display name (rename)</label>
-          <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            placeholder={doc.file_name}
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
-        </div>
-        <div>
-          <label className="block text-xs text-slate mb-1">Category</label>
-          <select value={category} onChange={e => setCategory(e.target.value)}
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
-            {CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-slate mb-1">Description</label>
-          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="Brief description..."
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
-        </div>
-        <div>
-          <label className="block text-xs text-slate mb-1">Document date</label>
-          <input type="date" value={docDate} onChange={e => setDocDate(e.target.value)}
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
-        </div>
-        <div>
-          <label className="block text-xs text-slate mb-1">Link to vet visit</label>
-          <select value={visitId} onChange={e => setVisitId(e.target.value)}
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
-            <option value="">None</option>
-            {vetVisits.map((v: any) => (
-              <option key={v.id} value={v.id}>{fmtDate(v.visit_date)} - {v.reason?.substring(0, 35)}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-slate mb-1">Link to treatment</label>
-          <select value={treatmentId} onChange={e => setTreatmentId(e.target.value)}
-            className="w-full px-2 py-1.5 rounded border border-tanzanite-100 text-xs focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
-            <option value="">None</option>
-            {treatments.map((t: any) => (
-              <option key={t.id} value={t.id}>{t.treatment_name} ({fmtDate(t.date_started)})</option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-tanzanite-500 text-white text-xs font-medium hover:bg-tanzanite-600 transition-colors disabled:opacity-50">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-          {saving ? 'Saving...' : 'Save changes'}
-        </button>
-        <button onClick={onCancel}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate hover:bg-tanzanite-50 transition-colors">
-          Cancel
-        </button>
-      </div>
     </div>
   )
 }
