@@ -2,59 +2,73 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Pill, X, ExternalLink, Trash2, Archive, Edit3, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Plus, Pill, X, Trash2, Edit3, Check, RotateCcw, Pause } from 'lucide-react'
 import { supabase, getDogs, getTreatmentLogs, getMedications, setTreatmentMedications } from '@/lib/supabase'
+import { useToast } from '@/contexts/ToastContext'
+import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog'
+import { ValidatedInput, ValidatedSelect, ValidatedTextarea, useFormValidation } from '@/components/FormField'
+import { SeverityPicker } from '@/components/SeverityPicker'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
+import { EmptyState } from '@/components/EmptyState'
 
 type TreatmentLog = {
   id: string; treatment_name: string; date_started: string; date_ended: string | null
   dosage: string | null; frequency: string | null; effectiveness: number | null
   side_effects_observed: string | null; notes: string | null
+  medication_id: string | null
   medications: { name: string; slug: string; brand_names: string[] } | null
   treatment_medications: { medication_id: string; medications: { id: string; name: string; slug: string; brand_names: string[] } }[]
-}
-
-type MedOption = { id: string; name: string; slug: string; brand_names: string[] | null }
-
-function EffectivenessDots({ rating }: { rating: number | null }) {
-  if (!rating) return <span className="text-xs text-slate">Not rated</span>
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`w-2.5 h-2.5 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
-      ))}
-    </div>
-  )
 }
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function EffectivenessDots({ rating }: { rating: number | null }) {
+  if (!rating) return <span className="text-xs text-slate">Not rated</span>
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex gap-0.5" aria-hidden="true">
+        {[1,2,3,4,5].map(i => (
+          <span key={i} className={`w-2 h-2 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
+        ))}
+      </div>
+      <span className="sr-only">Effectiveness: {rating} out of 5</span>
+    </div>
+  )
+}
+
 export default function TreatmentsPage() {
   const [dogs, setDogs] = useState<any[]>([])
   const [activeDogId, setActiveDogId] = useState<string>('')
   const [treatments, setTreatments] = useState<TreatmentLog[]>([])
-  const [wikiMeds, setWikiMeds] = useState<MedOption[]>([])
+  const [allMedications, setAllMedications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  // Integrations
+  const { showToast, showUndoToast } = useToast()
+  const { confirmingId, requestConfirm, cancelConfirm, isConfirming } = useConfirmDialog()
+  const { getFieldError, onBlur, validateAll, resetValidation } = useFormValidation()
+
+  // Form state
   const [treatmentName, setTreatmentName] = useState('')
   const [selectedMedIds, setSelectedMedIds] = useState<string[]>([])
   const [dateStarted, setDateStarted] = useState(new Date().toISOString().split('T')[0])
   const [dateEnded, setDateEnded] = useState('')
   const [dosage, setDosage] = useState('')
   const [frequency, setFrequency] = useState('')
-  const [effectiveness, setEffectiveness] = useState<number>(0)
+  const [effectiveness, setEffectiveness] = useState(3)
   const [sideEffects, setSideEffects] = useState('')
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    Promise.all([getDogs(), getMedications()]).then(([dogData, medData]) => {
-      setDogs(dogData)
-      setWikiMeds(medData)
-      if (dogData.length > 0) setActiveDogId(dogData[0].id)
+    Promise.all([getDogs(), getMedications()]).then(([d, m]) => {
+      setDogs(d)
+      setAllMedications(m || [])
+      if (d.length > 0) setActiveDogId(d[0].id)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -69,37 +83,45 @@ export default function TreatmentsPage() {
     setTreatments(data)
   }
 
-  // No auto-fill for multi-select — user names the treatment
-
   function resetForm() {
     setTreatmentName(''); setSelectedMedIds([]); setDateStarted(new Date().toISOString().split('T')[0])
-    setDateEnded(''); setDosage(''); setFrequency(''); setEffectiveness(0)
-    setSideEffects(''); setNotes(''); setEditingId(null)
+    setDateEnded(''); setDosage(''); setFrequency(''); setEffectiveness(3)
+    setSideEffects(''); setNotes(''); setEditingId(null); resetValidation()
   }
 
   function startEdit(t: TreatmentLog) {
     setEditingId(t.id)
     setTreatmentName(t.treatment_name)
-    setSelectedMedIds(t.treatment_medications?.map(tm => tm.medication_id) || (t.medications ? [t.medications.slug] : []))
+    setSelectedMedIds(
+      t.treatment_medications?.map(tm => tm.medication_id) ||
+      (t.medication_id ? [t.medication_id] : [])
+    )
     setDateStarted(t.date_started)
     setDateEnded(t.date_ended || '')
     setDosage(t.dosage || '')
     setFrequency(t.frequency || '')
-    setEffectiveness(t.effectiveness || 0)
+    setEffectiveness(t.effectiveness || 3)
     setSideEffects(t.side_effects_observed || '')
     setNotes(t.notes || '')
     setShowForm(true)
+    resetValidation()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!activeDogId || !treatmentName || !dateStarted) return
+
+    const isValid = validateAll([
+      { id: 'treatment-name', value: treatmentName, required: true },
+      { id: 'date-started', value: dateStarted, required: true },
+    ])
+    if (!isValid || !activeDogId) return
+
     setSaving(true)
 
-    const payload = {
+    const payload: any = {
       treatment_name: treatmentName,
-      medication_id: selectedMedIds.length === 1 ? selectedMedIds[0] : null,
+      medication_id: selectedMedIds.length > 0 ? selectedMedIds[0] : null,
       date_started: dateStarted,
       date_ended: dateEnded || null,
       dosage: dosage || null,
@@ -111,38 +133,77 @@ export default function TreatmentsPage() {
 
     let treatmentId = editingId
     if (editingId) {
-      await supabase.from('treatment_logs').update(payload).eq('id', editingId)
+      const { error } = await supabase.from('treatment_logs').update(payload).eq('id', editingId)
+      if (error) { showToast('Failed to update treatment', 'error'); setSaving(false); return }
     } else {
-      const { data } = await supabase.from('treatment_logs').insert({ ...payload, dog_id: activeDogId }).select('id').single()
+      const { data, error } = await supabase.from('treatment_logs').insert({ ...payload, dog_id: activeDogId }).select('id').single()
+      if (error) { showToast('Failed to save treatment', 'error'); setSaving(false); return }
       treatmentId = data?.id || null
     }
 
-    // Set multi-medication links
     if (treatmentId && selectedMedIds.length > 0) {
       await setTreatmentMedications(treatmentId, selectedMedIds)
     }
 
     await refreshTreatments()
+    showToast(editingId ? 'Treatment updated' : 'Treatment saved', 'success')
     resetForm()
     setShowForm(false)
     setSaving(false)
   }
 
+  // #4 Undo support for "Mark as past"
   async function handleMarkAsPast(id: string) {
     const today = new Date().toISOString().split('T')[0]
+    const original = treatments.find(t => t.id === id)
+
     await supabase.from('treatment_logs').update({ date_ended: today }).eq('id', id)
     await refreshTreatments()
+
+    showUndoToast('Treatment marked as past', async () => {
+      await supabase.from('treatment_logs').update({ date_ended: null }).eq('id', id)
+      await refreshTreatments()
+      showToast('Treatment reactivated', 'success')
+    })
   }
 
   async function handleReactivate(id: string) {
     await supabase.from('treatment_logs').update({ date_ended: null }).eq('id', id)
     await refreshTreatments()
+    showToast('Treatment reactivated', 'success')
   }
 
+  // #2 Inline confirm + #4 undo for delete
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    await supabase.from('treatment_logs').delete().eq('id', id)
-    await refreshTreatments()
+    cancelConfirm()
+    const deletedTreatment = treatments.find(t => t.id === id)
+
+    // Optimistic removal
+    setTreatments(prev => prev.filter(t => t.id !== id))
+
+    showUndoToast(`"${name}" deleted`, async () => {
+      if (deletedTreatment) {
+        await supabase.from('treatment_logs').insert({
+          id: deletedTreatment.id,
+          dog_id: activeDogId,
+          treatment_name: deletedTreatment.treatment_name,
+          medication_id: deletedTreatment.medication_id,
+          date_started: deletedTreatment.date_started,
+          date_ended: deletedTreatment.date_ended,
+          dosage: deletedTreatment.dosage,
+          frequency: deletedTreatment.frequency,
+          effectiveness: deletedTreatment.effectiveness,
+          side_effects_observed: deletedTreatment.side_effects_observed,
+          notes: deletedTreatment.notes,
+        })
+        await refreshTreatments()
+        showToast('Treatment restored', 'success')
+      }
+    })
+
+    setTimeout(async () => {
+      await supabase.from('treatment_logs').delete().eq('id', id)
+    }, 6500)
   }
 
   const active = treatments.filter(t => !t.date_ended)
@@ -161,8 +222,10 @@ export default function TreatmentsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <Breadcrumbs crumbs={[{ label: 'Treatments' }]} />
+
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard" className="p-2 rounded-lg hover:bg-tanzanite-50 transition-colors">
+        <Link href="/dashboard" className="p-2 rounded-lg hover:bg-tanzanite-50 transition-colors" aria-label="Back to dashboard">
           <ArrowLeft className="w-5 h-5 text-tanzanite-500" />
         </Link>
         <div className="flex-1">
@@ -180,113 +243,101 @@ export default function TreatmentsPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="card mb-8 border-tanzanite-200">
           <h2 className="font-semibold text-tanzanite-800 mb-4">
-            {editingId ? 'Edit treatment' : 'New treatment'}
+            {editingId ? 'Edit Treatment' : 'Add Treatment'}
           </h2>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-body mb-1">
-              Link to wiki medications <span className="text-slate font-normal">(select all that apply)</span>
-            </label>
-            <div className="max-h-40 overflow-y-auto border border-tanzanite-100 rounded-lg p-2 space-y-1">
-              {wikiMeds.map(med => (
-                <label key={med.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-tanzanite-50/50 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selectedMedIds.includes(med.id)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedMedIds(prev => [...prev, med.id])
-                      } else {
-                        setSelectedMedIds(prev => prev.filter(id => id !== med.id))
-                      }
-                    }}
-                    className="accent-tanzanite-500 w-4 h-4 rounded"
-                  />
-                  <span className="text-body">{med.brand_names?.[0] || med.name}</span>
-                  <span className="text-xs text-slate">({med.name})</span>
-                </label>
-              ))}
-            </div>
-            {selectedMedIds.length > 0 && (
-              <p className="text-xs text-tanzanite-500 mt-1">{selectedMedIds.length} medication{selectedMedIds.length !== 1 ? 's' : ''} linked</p>
-            )}
+          <ValidatedInput
+            label="Treatment Name"
+            id="treatment-name"
+            required
+            value={treatmentName}
+            onValueChange={setTreatmentName}
+            onValidate={(id, val) => onBlur(id, val, [], true)}
+            error={getFieldError('treatment-name')}
+            placeholder="e.g., Apoquel, Medicated bath"
+          />
+
+          {allMedications.length > 0 && (
+            <ValidatedSelect
+              label="Linked Medication"
+              id="linked-med"
+              optional
+              value={selectedMedIds[0] || ''}
+              onValueChange={val => setSelectedMedIds(val ? [val] : [])}
+              options={allMedications.map((m: any) => ({
+                value: m.id,
+                label: m.brand_names?.[0] ? `${m.name} (${m.brand_names[0]})` : m.name,
+              }))}
+              placeholder="Select from wiki..."
+            />
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <ValidatedInput
+              label="Start Date"
+              id="date-started"
+              required
+              type="date"
+              value={dateStarted}
+              onValueChange={setDateStarted}
+              onValidate={(id, val) => onBlur(id, val, [], true)}
+              error={getFieldError('date-started')}
+            />
+            <ValidatedInput
+              label="End Date"
+              id="date-ended"
+              optional
+              type="date"
+              value={dateEnded}
+              onValueChange={setDateEnded}
+            />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="treatment-name" className="block text-sm font-medium text-body mb-1">Treatment name</label>
-              <input id="treatment-name" type="text" value={treatmentName} onChange={e => setTreatmentName(e.target.value)}
-                placeholder="e.g., Apoquel, Chlorhexidine paw soak"
-                className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" required />
-            </div>
-            <div>
-              <label htmlFor="dosage" className="block text-sm font-medium text-body mb-1">Dosage</label>
-              <input id="dosage" type="text" value={dosage} onChange={e => setDosage(e.target.value)}
-                placeholder="e.g., 750mg, 2 pumps"
-                className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
-            </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <ValidatedInput
+              label="Dosage"
+              id="dosage"
+              optional
+              value={dosage}
+              onValueChange={setDosage}
+              placeholder="e.g., 16mg"
+            />
+            <ValidatedInput
+              label="Frequency"
+              id="frequency"
+              optional
+              value={frequency}
+              onValueChange={setFrequency}
+              placeholder="e.g., 2x daily"
+            />
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label htmlFor="date-started" className="block text-sm font-medium text-body mb-1">Started</label>
-              <input id="date-started" type="date" value={dateStarted} onChange={e => setDateStarted(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" required />
-            </div>
-            <div>
-              <label htmlFor="date-ended" className="block text-sm font-medium text-body mb-1">
-                Ended <span className="text-slate font-normal">(blank = ongoing)</span>
-              </label>
-              <input id="date-ended" type="date" value={dateEnded} onChange={e => setDateEnded(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200" />
-            </div>
-            <div>
-              <label htmlFor="frequency" className="block text-sm font-medium text-body mb-1">Frequency</label>
-              <select id="frequency" value={frequency} onChange={e => setFrequency(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200">
-                <option value="">Select...</option>
-                <option value="Once daily">Once daily</option>
-                <option value="Twice daily">Twice daily</option>
-                <option value="Three times daily">Three times daily</option>
-                <option value="Every 12 hours">Every 12 hours</option>
-                <option value="Every other day">Every other day</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-                <option value="As needed">As needed</option>
-                <option value="Topical daily">Topical daily</option>
-                <option value="Topical twice daily">Topical twice daily</option>
-              </select>
-            </div>
-          </div>
+          <SeverityPicker
+            value={effectiveness}
+            onChange={setEffectiveness}
+            id="effectiveness"
+            label="Effectiveness"
+          />
 
-          <div className="mb-4">
-            <label htmlFor="effectiveness" className="block text-sm font-medium text-body mb-1">
-              Effectiveness: {effectiveness > 0 ? `${effectiveness}/5` : 'Not yet rated'}
-            </label>
-            <input id="effectiveness" type="range" min="0" max="5" value={effectiveness}
-              onChange={e => setEffectiveness(Number(e.target.value))} className="w-full accent-tanzanite-500" />
-            <div className="flex justify-between text-xs text-slate mt-1">
-              <span>N/A</span><span>No effect</span><span>Moderate</span><span>Very effective</span>
-            </div>
-          </div>
+          <ValidatedTextarea
+            label="Side Effects Observed"
+            id="side-effects"
+            optional
+            value={sideEffects}
+            onValueChange={setSideEffects}
+            rows={2}
+            placeholder="Any side effects noticed..."
+          />
 
-          <div className="mb-4">
-            <label htmlFor="side-effects" className="block text-sm font-medium text-body mb-1">
-              Side effects observed <span className="text-slate font-normal">(optional)</span>
-            </label>
-            <textarea id="side-effects" value={sideEffects} onChange={e => setSideEffects(e.target.value)}
-              rows={2} placeholder="Any side effects noticed?"
-              className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200 resize-none" />
-          </div>
-
-          <div className="mb-4">
-            <label htmlFor="treatment-notes" className="block text-sm font-medium text-body mb-1">
-              Notes <span className="text-slate font-normal">(optional)</span>
-            </label>
-            <textarea id="treatment-notes" value={notes} onChange={e => setNotes(e.target.value)}
-              rows={2} placeholder="Additional notes about this treatment"
-              className="w-full px-3 py-2 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200 resize-none" />
-          </div>
+          <ValidatedTextarea
+            label="Notes"
+            id="treatment-notes"
+            optional
+            value={notes}
+            onValueChange={setNotes}
+            rows={2}
+            placeholder="Additional notes..."
+          />
 
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="btn-primary">
@@ -301,6 +352,7 @@ export default function TreatmentsPage() {
         </form>
       )}
 
+      {/* Active Treatments */}
       {active.length > 0 && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-tanzanite-800 mb-3 flex items-center gap-2">
@@ -308,15 +360,22 @@ export default function TreatmentsPage() {
           </h2>
           <div className="space-y-3">
             {active.map(t => (
-              <TreatmentCard key={t.id} treatment={t}
+              <TreatmentCard
+                key={t.id}
+                treatment={t}
                 onEdit={() => startEdit(t)}
                 onMarkPast={() => handleMarkAsPast(t.id)}
-                onDelete={() => handleDelete(t.id, t.treatment_name)} />
+                onDelete={() => requestConfirm(t.id)}
+                isConfirming={isConfirming(t.id)}
+                onConfirmDelete={() => handleDelete(t.id, t.treatment_name)}
+                onCancelConfirm={cancelConfirm}
+              />
             ))}
           </div>
         </div>
       )}
 
+      {/* Past Treatments */}
       {past.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-tanzanite-800 mb-3 flex items-center gap-2">
@@ -324,85 +383,109 @@ export default function TreatmentsPage() {
           </h2>
           <div className="space-y-3">
             {past.map(t => (
-              <TreatmentCard key={t.id} treatment={t} isPast
+              <TreatmentCard
+                key={t.id}
+                treatment={t}
+                isPast
                 onEdit={() => startEdit(t)}
                 onReactivate={() => handleReactivate(t.id)}
-                onDelete={() => handleDelete(t.id, t.treatment_name)} />
+                onDelete={() => requestConfirm(t.id)}
+                isConfirming={isConfirming(t.id)}
+                onConfirmDelete={() => handleDelete(t.id, t.treatment_name)}
+                onCancelConfirm={cancelConfirm}
+              />
             ))}
           </div>
         </div>
       )}
 
       {treatments.length === 0 && !showForm && (
-        <div className="card text-center py-12">
-          <Pill className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
-          <p className="text-slate text-sm">No treatments logged yet.</p>
-        </div>
+        <EmptyState
+          icon={Pill}
+          title="No treatments logged yet"
+          message="Record medications and therapies to build a treatment history."
+          motivation="A clear treatment timeline helps your vet see what has been tried, what worked, and what to adjust."
+          action={
+            <button onClick={() => setShowForm(true)} className="btn-secondary text-sm inline-flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Add First Treatment
+            </button>
+          }
+        />
       )}
     </div>
   )
 }
 
-function TreatmentCard({ treatment: t, isPast, onEdit, onMarkPast, onReactivate, onDelete }: {
+function TreatmentCard({ treatment: t, isPast, onEdit, onMarkPast, onReactivate, onDelete, isConfirming: confirming, onConfirmDelete, onCancelConfirm }: {
   treatment: TreatmentLog; isPast?: boolean
   onEdit: () => void; onMarkPast?: () => void; onReactivate?: () => void; onDelete: () => void
+  isConfirming: boolean; onConfirmDelete: () => void; onCancelConfirm: () => void
 }) {
   return (
-    <div className={`card py-4 ${isPast ? 'opacity-75' : ''}`}>
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div className="flex-1">
-          <h3 className="font-medium text-body">{t.treatment_name}</h3>
-          <div className="flex flex-wrap gap-x-3 text-xs text-slate mt-0.5">
+    <div className={`card py-3 px-4 ${isPast ? 'opacity-70' : ''}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-sm font-medium text-body">{t.treatment_name}</p>
+            <EffectivenessDots rating={t.effectiveness} />
+          </div>
+          <div className="flex flex-wrap gap-x-3 text-xs text-slate">
             {t.dosage && <span>{t.dosage}</span>}
             {t.frequency && <span>{t.frequency}</span>}
-            <span>{formatDate(t.date_started)}{t.date_ended ? ` - ${formatDate(t.date_ended)}` : ' - ongoing'}</span>
+            <span>Since {formatDate(t.date_started)}</span>
+            {t.date_ended && <span>Until {formatDate(t.date_ended)}</span>}
           </div>
-        </div>
-        <EffectivenessDots rating={t.effectiveness} />
-      </div>
-
-      {t.side_effects_observed && <p className="text-xs text-red-500 mt-1">Side effects: {t.side_effects_observed}</p>}
-      {t.notes && <p className="text-xs text-slate mt-1">{t.notes}</p>}
-
-      {/* Show linked medications (multi or legacy single) */}
-      {t.treatment_medications && t.treatment_medications.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {t.treatment_medications.map(tm => (
-            <Link key={tm.medication_id} href={`/medications/${tm.medications.slug}`}
-              className="inline-flex items-center gap-1 text-xs text-tanzanite-500 hover:underline bg-tanzanite-50/50 px-2 py-1 rounded">
-              <ExternalLink className="w-3 h-3" /> {tm.medications.brand_names?.[0] || tm.medications.name}
+          {t.side_effects_observed && <p className="text-xs text-amber-600 mt-1">{t.side_effects_observed}</p>}
+          {t.notes && <p className="text-xs text-slate mt-0.5">{t.notes}</p>}
+          {t.medications && (
+            <Link href={`/medications/${t.medications.slug}`}
+              className="text-xs text-tanzanite-500 hover:underline mt-1 inline-block">
+              Wiki: {t.medications.brand_names?.[0] || t.medications.name}
             </Link>
-          ))}
+          )}
         </div>
-      ) : t.medications ? (
-        <Link href={`/medications/${t.medications.slug}`}
-          className="inline-flex items-center gap-1 text-xs text-tanzanite-500 hover:underline mt-2">
-          <ExternalLink className="w-3 h-3" /> Wiki: {t.medications.brand_names?.[0] || t.medications.name}
-        </Link>
-      ) : null}
-
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-tanzanite-50">
-        <button onClick={onEdit}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-tanzanite-500 hover:bg-tanzanite-50 transition-colors">
-          <Edit3 className="w-3 h-3" /> Edit
-        </button>
-        {!isPast && onMarkPast && (
-          <button onClick={onMarkPast}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors">
-            <Archive className="w-3 h-3" /> Mark as past
+        <div className="flex gap-1 flex-shrink-0">
+          <button onClick={onEdit} className="p-1.5 rounded hover:bg-tanzanite-50 text-slate" aria-label="Edit treatment">
+            <Edit3 className="w-3.5 h-3.5" />
           </button>
-        )}
-        {isPast && onReactivate && (
-          <button onClick={onReactivate}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-green-600 hover:bg-green-50 transition-colors">
-            <RotateCcw className="w-3 h-3" /> Reactivate
+          {!isPast && onMarkPast && (
+            <button onClick={onMarkPast} className="p-1.5 rounded hover:bg-amber-50 text-slate" aria-label="Mark as past">
+              <Pause className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {isPast && onReactivate && (
+            <button onClick={onReactivate} className="p-1.5 rounded hover:bg-green-50 text-slate" aria-label="Reactivate">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 text-slate" aria-label="Delete treatment">
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
-        )}
-        <button onClick={onDelete}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-red-400 hover:bg-red-50 transition-colors ml-auto">
-          <Trash2 className="w-3 h-3" /> Delete
-        </button>
+        </div>
       </div>
+
+      {confirming && (
+        <ConfirmDialog
+          message={`Delete "${t.treatment_name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelConfirm}
+        />
+      )}
+    </div>
+  )
+}
+
+function EffectivenessDots({ rating }: { rating: number | null }) {
+  if (!rating) return <span className="text-xs text-slate">Not rated</span>
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex gap-0.5" aria-hidden="true">
+        {[1,2,3,4,5].map(i => (
+          <span key={i} className={`w-2 h-2 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
+        ))}
+      </div>
+      <span className="sr-only">Effectiveness: {rating} out of 5</span>
     </div>
   )
 }
