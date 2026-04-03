@@ -98,18 +98,18 @@ export default function DashboardPage() {
     })
   }, [user])
 
-  // Load data for active dog
+  // FIX: Use Promise.allSettled so one failed query doesn't block all data
   useEffect(() => {
     if (!activeDog) return
     setDataLoading(true)
-    Promise.all([
+    Promise.allSettled([
       getSymptomLogs(activeDog.id, 10),
       getTreatmentLogs(activeDog.id),
       getVetVisits(activeDog.id),
     ]).then(([symp, treat, visits]) => {
-      setSymptoms(symp)
-      setTreatments(treat)
-      setVetVisits(visits)
+      if (symp.status === 'fulfilled') setSymptoms(symp.value)
+      if (treat.status === 'fulfilled') setTreatments(treat.value)
+      if (visits.status === 'fulfilled') setVetVisits(visits.value)
       setDataLoading(false)
     })
   }, [activeDog])
@@ -178,7 +178,7 @@ export default function DashboardPage() {
           <PawPrint className="w-12 h-12 text-tanzanite-200 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-tanzanite-800 mb-2">Add your dog</h2>
           <p className="text-slate mb-6 max-w-sm mx-auto">
-            Set up your dog's profile to start tracking symptoms and treatments.
+            Set up your dog&apos;s profile to start tracking symptoms and treatments.
           </p>
           <Link href="/dashboard/dogs/new" className="btn-primary inline-block">
             <Plus className="w-4 h-4 inline mr-1" /> Add Dog
