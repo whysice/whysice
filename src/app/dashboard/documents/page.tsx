@@ -60,6 +60,11 @@ export default function DocumentsPage() {
   const [editingDoc, setEditingDoc] = useState<any | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Inline edit state
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+
   // Integrations
   const { showToast } = useToast()
   const { confirmingId, requestConfirm, cancelConfirm, isConfirming } = useConfirmDialog()
@@ -90,17 +95,20 @@ export default function DocumentsPage() {
   }, [activeDogId])
 
   async function refreshData() {
-    const [docs, visits, treats] = await Promise.all([
-      getDocuments(activeDogId),
-      getVetVisits(activeDogId),
-      getTreatmentListSimple(activeDogId),
-    ])
-    setDocuments(docs)
-    setVetVisits(visits)
-    setTreatments(treats)
+    try {
+      const [docs, visits, treats] = await Promise.all([
+        getDocuments(activeDogId),
+        getVetVisits(activeDogId),
+        getTreatmentListSimple(activeDogId),
+      ])
+      setDocuments(docs)
+      setVetVisits(visits)
+      setTreatments(treats)
+    } catch {
+      // Graceful fallback
+    }
   }
 
-  // #5 Enhanced upload with progress and auto-categorization
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0 || !activeDogId) return
@@ -114,13 +122,11 @@ export default function DocumentsPage() {
     setUploadFiles(fileStates)
 
     for (let i = 0; i < files.length; i++) {
-      // Auto-suggest category from filename
       const suggestedCategory = inferCategoryFromFilename(files[i].name)
       const effectiveCategory = uploadCategory === 'general' && suggestedCategory !== 'general'
         ? suggestedCategory
         : uploadCategory
 
-      // Update status to uploading
       setUploadFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, status: 'uploading', progress: 20 } : f
       ))
@@ -151,11 +157,8 @@ export default function DocumentsPage() {
 
     await refreshData()
     setUploading(false)
-
-    const successCount = fileStates.length // will be updated via state
     setLastUploadedFile(files[0].name)
 
-    // Clear progress after delay
     setTimeout(() => {
       setUploadFiles([])
     }, 3000)
@@ -188,7 +191,6 @@ export default function DocumentsPage() {
     }
   }
 
-  // #2 Inline confirm for delete
   async function handleDelete(doc: any) {
     try {
       await deleteDocument(doc.id, doc.storage_path)
@@ -198,6 +200,31 @@ export default function DocumentsPage() {
     } catch (err) {
       showToast('Failed to delete document', 'error')
     }
+  }
+
+  // Start editing a document's title/description
+  function startEdit(doc: any) {
+    setEditingDoc(doc)
+    setEditDisplayName(doc.display_name || '')
+    setEditDescription(doc.description || '')
+  }
+
+  // Save edited title/description
+  async function handleSaveEdit() {
+    if (!editingDoc) return
+    setEditSaving(true)
+    try {
+      await updateDocumentMetadata(editingDoc.id, {
+        display_name: editDisplayName.trim() || null,
+        description: editDescription.trim() || null,
+      })
+      await refreshData()
+      setEditingDoc(null)
+      showToast('Document updated', 'success')
+    } catch (err) {
+      showToast('Failed to update document', 'error')
+    }
+    setEditSaving(false)
   }
 
   async function handleUpdateLink(docId: string, field: string, value: string | null) {
@@ -334,10 +361,10 @@ export default function DocumentsPage() {
           </div>
         )}
 
-        {/* #5 Upload progress */}
+        {/* Upload progress */}
         <UploadProgress files={uploadFiles} />
 
-        {/* #5 Post-upload metadata prompt */}
+        {/* Post-upload metadata prompt */}
         {lastUploadedFile && !uploading && !showUploadOptions && uploadFiles.length === 0 && (
           <PostUploadPrompt
             fileName={lastUploadedFile}
@@ -380,6 +407,8 @@ export default function DocumentsPage() {
                 <div className="space-y-2">
                   {docs.map((doc: any) => {
                     const Icon = getFileIcon(doc.file_name)
+                    const isEditing = editingDoc?.id === doc.id
+
                     return (
                       <div key={doc.id} className="card py-3 px-4">
                         <div className="flex items-start gap-3">
@@ -387,36 +416,90 @@ export default function DocumentsPage() {
                             <Icon className="w-4 h-4 text-tanzanite-500" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-body">{doc.display_name || doc.file_name}</p>
-                            {doc.display_name && <p className="text-[10px] text-slate">{doc.file_name}</p>}
-                            {doc.description && <p className="text-xs text-slate">{doc.description}</p>}
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate mt-1">
-                              {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
-                              {doc.doc_date && <span>{formatDate(doc.doc_date)}</span>}
-                              {doc.vet_visits && (
-                                <span className="text-tanzanite-500">
-                                  <Calendar className="w-3 h-3 inline mr-0.5" />
-                                  {formatDate(doc.vet_visits.visit_date)}
-                                </span>
-                              )}
-                              {doc.treatment_logs && (
-                                <span className="text-ice-600">
-                                  <Pill className="w-3 h-3 inline mr-0.5" />
-                                  {doc.treatment_logs.treatment_name}
-                                </span>
-                              )}
+                            {isEditing ? (
+                              /* Inline edit form */
+                              <div className="space-y-2">
+                                <div>
+                                  <label htmlFor={`edit-name-${doc.id}`} className="block text-xs text-slate mb-0.5">Display Name</label>
+                                  <input
+                                    id={`edit-name-${doc.id}`}
+                                    type="text"
+                                    value={editDisplayName}
+                                    onChange={e => setEditDisplayName(e.target.value)}
+                                    placeholder={doc.file_name}
+                                    className="w-full px-2 py-1.5 rounded-lg border border-tanzanite-200 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div>
+                                  <label htmlFor={`edit-desc-${doc.id}`} className="block text-xs text-slate mb-0.5">Description</label>
+                                  <input
+                                    id={`edit-desc-${doc.id}`}
+                                    type="text"
+                                    value={editDescription}
+                                    onChange={e => setEditDescription(e.target.value)}
+                                    placeholder="Add a description..."
+                                    className="w-full px-2 py-1.5 rounded-lg border border-tanzanite-100 text-sm focus:border-tanzanite-500 focus:outline-none focus:ring-1 focus:ring-tanzanite-200"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleSaveEdit}
+                                    disabled={editSaving}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-tanzanite-500 text-white text-xs font-medium hover:bg-tanzanite-600 disabled:opacity-50"
+                                  >
+                                    {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingDoc(null)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-slate hover:bg-gray-100"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Normal display */
+                              <>
+                                <p className="text-sm font-medium text-body">{doc.display_name || doc.file_name}</p>
+                                {doc.display_name && <p className="text-[10px] text-slate">{doc.file_name}</p>}
+                                {doc.description && <p className="text-xs text-slate">{doc.description}</p>}
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate mt-1">
+                                  {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
+                                  {doc.doc_date && <span>{formatDate(doc.doc_date)}</span>}
+                                  {doc.vet_visits && (
+                                    <span className="text-tanzanite-500">
+                                      <Calendar className="w-3 h-3 inline mr-0.5" />
+                                      {formatDate(doc.vet_visits.visit_date)}
+                                    </span>
+                                  )}
+                                  {doc.treatment_logs && (
+                                    <span className="text-ice-600">
+                                      <Pill className="w-3 h-3 inline mr-0.5" />
+                                      {doc.treatment_logs.treatment_name}
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {!isEditing && (
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button onClick={() => startEdit(doc)}
+                                className="p-1.5 rounded hover:bg-tanzanite-50 text-slate" aria-label={`Edit ${doc.display_name || doc.file_name}`}>
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleView(doc)}
+                                className="p-1.5 rounded hover:bg-tanzanite-50 text-slate" aria-label={`View ${doc.file_name}`}>
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => requestConfirm(doc.id)}
+                                className="p-1.5 rounded hover:bg-red-50 text-slate" aria-label={`Delete ${doc.file_name}`}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <button onClick={() => handleView(doc)}
-                              className="p-1.5 rounded hover:bg-tanzanite-50 text-slate" aria-label={`View ${doc.file_name}`}>
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => requestConfirm(doc.id)}
-                              className="p-1.5 rounded hover:bg-red-50 text-slate" aria-label={`Delete ${doc.file_name}`}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          )}
                         </div>
 
                         {isConfirming(doc.id) && (
