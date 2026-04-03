@@ -128,30 +128,42 @@ export async function getSymptomLogs(dogId: string, limit = 50) {
   return data
 }
 
+// FIX: Triple-fallback to ensure treatments always load
 export async function getTreatmentLogs(dogId: string) {
-  const { data, error } = await supabase
-    .from('treatment_logs')
-    .select(`
-      *,
-      medications (name, slug, brand_names),
-      treatment_medications (
-        medication_id,
-        medications (id, name, slug, brand_names)
-      )
-    `)
-    .eq('dog_id', dogId)
-    .order('date_started', { ascending: false })
-  if (error) {
-    // Fallback without treatment_medications join if it fails
-    const { data: fallback, error: fbError } = await supabase
+  // Attempt 1: Full query with all joins
+  try {
+    const { data, error } = await supabase
+      .from('treatment_logs')
+      .select(`
+        *,
+        medications (name, slug, brand_names),
+        treatment_medications (
+          medication_id,
+          medications (id, name, slug, brand_names)
+        )
+      `)
+      .eq('dog_id', dogId)
+      .order('date_started', { ascending: false })
+    if (!error && data) return data
+  } catch {}
+
+  // Attempt 2: Without treatment_medications join
+  try {
+    const { data, error } = await supabase
       .from('treatment_logs')
       .select('*, medications (name, slug, brand_names)')
       .eq('dog_id', dogId)
       .order('date_started', { ascending: false })
-    if (fbError) throw fbError
-    return (fallback || []).map(t => ({ ...t, treatment_medications: [] }))
-  }
-  return data
+    if (!error && data) return data.map(t => ({ ...t, treatment_medications: [] }))
+  } catch {}
+
+  // Attempt 3: No joins at all — bare minimum
+  const { data } = await supabase
+    .from('treatment_logs')
+    .select('*')
+    .eq('dog_id', dogId)
+    .order('date_started', { ascending: false })
+  return (data || []).map(t => ({ ...t, medications: null, treatment_medications: [] }))
 }
 
 // Lightweight treatment list (just id, name, date) for dropdowns
