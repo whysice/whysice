@@ -50,13 +50,16 @@ export default function TreatmentsPage() {
   const [sideEffects, setSideEffects] = useState('')
   const [notes, setNotes] = useState('')
 
+  // FIX: Use Promise.allSettled so getMedications failure doesn't block dog loading
   useEffect(() => {
-    Promise.all([getDogs(), getMedications()]).then(([d, m]) => {
+    Promise.allSettled([getDogs(), getMedications()]).then(([dogsResult, medsResult]) => {
+      const d = dogsResult.status === 'fulfilled' ? dogsResult.value : []
+      const m = medsResult.status === 'fulfilled' ? medsResult.value : []
       setDogs(d)
       setAllMedications(m || [])
       if (d.length > 0) setActiveDogId(d[0].id)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })
   }, [])
 
   useEffect(() => {
@@ -64,9 +67,14 @@ export default function TreatmentsPage() {
     refreshTreatments()
   }, [activeDogId])
 
+  // FIX: Add try/catch so a failed fetch doesn't leave page blank
   async function refreshTreatments() {
-    const data = await getTreatmentLogs(activeDogId)
-    setTreatments(data)
+    try {
+      const data = await getTreatmentLogs(activeDogId)
+      setTreatments(data)
+    } catch {
+      setTreatments([])
+    }
   }
 
   function resetForm() {
