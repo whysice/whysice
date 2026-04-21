@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Pill, DollarSign, ChevronRight } from 'lucide-react'
+import { Pill, DollarSign, ChevronRight, AlertCircle, RotateCcw } from 'lucide-react'
 import { getMedications } from '@/lib/supabase'
 
 type MedCard = {
@@ -25,12 +25,21 @@ function CostDots({ tier }: { tier: string | null }) {
 export default function MedicationsIndexPage() {
   const [medications, setMedications] = useState<MedCard[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  function load() {
+    setLoading(true)
+    setError(null)
     getMedications()
-      .then(data => { setMedications(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+      .then(data => { setMedications((data ?? []) as MedCard[]); setLoading(false) })
+      .catch(err => {
+        console.error('Failed to load medications:', err)
+        setError(err?.message || 'Failed to load medications. Please try again.')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => { load() }, [])
 
   // Group by drug class, preserving sort_order within groups
   const classOrder = ['Immunotherapy', 'Monoclonal antibody', 'Calcineurin inhibitor', 'Methylxanthine / Immunomodulator', 'JAK inhibitor', 'Second-generation antihistamine', 'First-generation cephalosporin']
@@ -54,6 +63,23 @@ export default function MedicationsIndexPage() {
       {loading ? (
         <div className="space-y-4">
           {[1,2,3].map(i => <div key={i} className="h-24 bg-tanzanite-50 rounded-xl animate-pulse" />)}
+        </div>
+      ) : error ? (
+        <div className="card text-center py-12">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-sm font-medium text-body mb-1">Couldn&apos;t load medications</p>
+          <p className="text-sm text-slate mb-4 max-w-sm mx-auto">{error}</p>
+          <button onClick={load} className="btn-primary inline-flex items-center gap-2">
+            <RotateCcw className="w-4 h-4" /> Try again
+          </button>
+        </div>
+      ) : medications.length === 0 ? (
+        <div className="card text-center py-12">
+          <Pill className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
+          <p className="text-sm font-medium text-body mb-1">No medications yet</p>
+          <p className="text-sm text-slate max-w-sm mx-auto">
+            The medication reference hasn&apos;t been populated yet.
+          </p>
         </div>
       ) : (
         <div className="space-y-8">

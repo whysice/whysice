@@ -34,7 +34,7 @@ export async function getCategories() {
     .select('*')
     .order('sort_order')
   if (error) throw error
-  return data
+  return data ?? []
 }
 
 export async function getCategory(slug: string) {
@@ -54,7 +54,7 @@ export async function getConditionsByCategory(categoryId: string) {
     .eq('category_id', categoryId)
     .order('name')
   if (error) throw error
-  return data
+  return data ?? []
 }
 
 export async function getCondition(slug: string) {
@@ -93,12 +93,19 @@ export async function getMedication(slug: string) {
 }
 
 export async function getMedications() {
-  const { data, error } = await supabase
+  // Try with sort_order first; fall back if the column doesn't exist in the user's DB
+  const withSort = await supabase
     .from('medications')
     .select('id, name, slug, brand_names, drug_class, summary_owner, cost_tier, sort_order')
     .order('sort_order', { ascending: true })
-  if (error) throw error
-  return data
+  if (!withSort.error) return withSort.data ?? []
+
+  const fallback = await supabase
+    .from('medications')
+    .select('id, name, slug, brand_names, drug_class, summary_owner, cost_tier')
+    .order('name')
+  if (fallback.error) throw fallback.error
+  return fallback.data ?? []
 }
 
 // ============================================
@@ -122,7 +129,7 @@ export async function getDogs() {
     .select('*')
     .order('name')
   if (error) throw error
-  return data
+  return data ?? []
 }
 
 export async function getSymptomLogs(dogId: string, limit = 50) {
@@ -133,7 +140,7 @@ export async function getSymptomLogs(dogId: string, limit = 50) {
     .order('date', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return data
+  return data ?? []
 }
 
 // FIX: Triple-fallback to ensure treatments always load
@@ -202,7 +209,7 @@ export async function getVetVisits(dogId: string) {
     .eq('dog_id', dogId)
     .order('visit_date', { ascending: false })
   if (error) throw error
-  return data
+  return data ?? []
 }
 
 // ============================================

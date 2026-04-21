@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShieldAlert, Footprints, Bug, Dna, Search as SearchIcon, ArrowRight } from 'lucide-react'
+import { ShieldAlert, Footprints, Bug, Dna, Search as SearchIcon, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react'
 import { getCategories } from '@/lib/supabase'
 
 const ICONS: Record<string, any> = {
@@ -24,12 +24,21 @@ const COLORS = [
 export default function ConditionsIndexPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  function load() {
+    setLoading(true)
+    setError(null)
     getCategories()
-      .then(data => { setCategories(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+      .then(data => { setCategories(data ?? []); setLoading(false) })
+      .catch(err => {
+        console.error('Failed to load categories:', err)
+        setError(err?.message || 'Failed to load conditions. Please try again.')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => { load() }, [])
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -41,6 +50,23 @@ export default function ConditionsIndexPage() {
           {[1,2,3,4].map(i => (
             <div key={i} className="h-32 bg-tanzanite-50 rounded-xl animate-pulse" />
           ))}
+        </div>
+      ) : error ? (
+        <div className="card text-center py-12">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-sm font-medium text-body mb-1">Couldn&apos;t load conditions</p>
+          <p className="text-sm text-slate mb-4 max-w-sm mx-auto">{error}</p>
+          <button onClick={load} className="btn-primary inline-flex items-center gap-2">
+            <RotateCcw className="w-4 h-4" /> Try again
+          </button>
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="card text-center py-12">
+          <ShieldAlert className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
+          <p className="text-sm font-medium text-body mb-1">No categories yet</p>
+          <p className="text-sm text-slate max-w-sm mx-auto">
+            The condition knowledge base hasn&apos;t been populated yet.
+          </p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
