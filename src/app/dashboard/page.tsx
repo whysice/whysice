@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { PawPrint, Activity, Pill, Calendar, FileText, Plus, ChevronRight, AlertCircle, TrendingUp } from 'lucide-react'
+import { PawPrint, Activity, Pill, Calendar, FileText, Plus, ChevronRight, AlertCircle, TrendingUp, RotateCcw } from 'lucide-react'
 import { supabase, getDogs, getSymptomLogs, getTreatmentLogs, getVetVisits } from '@/lib/supabase'
 
 type Dog = {
@@ -72,31 +72,58 @@ export default function DashboardPage() {
   const [treatments, setTreatments] = useState<TreatmentLog[]>([])
   const [vetVisits, setVetVisits] = useState<VetVisit[]>([])
   const [dataLoading, setDataLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Auth check - listen for session changes (handles page reload + magic link callback)
   useEffect(() => {
-    // First check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null)
-      setAuthLoading(false)
-    })
+    let resolved = false
 
-    // Listen for changes (login, logout, token refresh)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        resolved = true
+        setUser(session?.user || null)
+        setAuthLoading(false)
+      })
+      .catch(err => {
+        resolved = true
+        console.error('Auth session check failed:', err)
+        setUser(null)
+        setAuthLoading(false)
+      })
+
+    // Fallback: if getSession hangs (e.g., misconfigured Supabase), unblock UI after 5s
+    const fallback = setTimeout(() => {
+      if (!resolved) {
+        console.warn('Auth session check timed out — showing login')
+        setAuthLoading(false)
+      }
+    }, 5000)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null)
       setAuthLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(fallback)
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Load dogs when authenticated
   useEffect(() => {
     if (!user) return
-    getDogs().then(data => {
-      setDogs(data)
-      if (data.length > 0) setActiveDog(data[0])
-    })
+    setLoadError(null)
+    getDogs()
+      .then(data => {
+        const list = data ?? []
+        setDogs(list)
+        if (list.length > 0) setActiveDog(list[0])
+      })
+      .catch(err => {
+        console.error('Failed to load dogs:', err)
+        setLoadError(err?.message || 'Failed to load your dogs. Please try again.')
+      })
   }, [user])
 
   // FIX: Use Promise.allSettled so one failed query doesn't block all data
@@ -108,9 +135,12 @@ export default function DashboardPage() {
       getTreatmentLogs(activeDog.id),
       getVetVisits(activeDog.id),
     ]).then(([symp, treat, visits]) => {
-      if (symp.status === 'fulfilled') setSymptoms(symp.value)
-      if (treat.status === 'fulfilled') setTreatments(treat.value)
-      if (visits.status === 'fulfilled') setVetVisits(visits.value)
+      if (symp.status === 'fulfilled') setSymptoms((symp.value ?? []) as SymptomLog[])
+      else console.error('Symptom load failed:', symp.reason)
+      if (treat.status === 'fulfilled') setTreatments((treat.value ?? []) as TreatmentLog[])
+      else console.error('Treatment load failed:', treat.reason)
+      if (visits.status === 'fulfilled') setVetVisits((visits.value ?? []) as VetVisit[])
+      else console.error('Vet visit load failed:', visits.reason)
       setDataLoading(false)
     })
   }, [activeDog])
@@ -173,8 +203,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Load error banner */}
+      {loadError && (
+        <div className="card border-l-4 border-l-red-400 mb-6 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-body">Couldn&apos;t load your data</p>
+            <p className="text-xs text-slate mt-0.5">{loadError}</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-tanzanite-500 font-medium hover:underline inline-flex items-center gap-1 flex-shrink-0"
+          >
+            <RotateCcw className="w-3 h-3" /> Reload
+          </button>
+        </div>
+      )}
+
       {/* No dogs yet */}
-      {dogs.length === 0 && (
+      {!loadError && dogs.length === 0 && (
         <div className="card text-center py-16">
           <PawPrint className="w-12 h-12 text-tanzanite-200 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-tanzanite-800 mb-2">Add your dog</h2>
