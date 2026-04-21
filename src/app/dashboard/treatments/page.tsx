@@ -25,10 +25,10 @@ function formatDate(dateStr: string) {
 }
 
 export default function TreatmentsPage() {
-  const [dogs, setDogs] = useState<any[]>([])
+  const [dogs, setDogs] = useState<{ id: string; name: string }[]>([])
   const [activeDogId, setActiveDogId] = useState<string>('')
   const [treatments, setTreatments] = useState<TreatmentLog[]>([])
-  const [allMedications, setAllMedications] = useState<any[]>([])
+  const [allMedications, setAllMedications] = useState<{ id: string; name: string; slug: string; brand_names: string[] | null; drug_class: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -113,7 +113,7 @@ export default function TreatmentsPage() {
 
     setSaving(true)
 
-    const payload: any = {
+    const payload: Record<string, string | number | null> = {
       treatment_name: treatmentName,
       medication_id: selectedMedIds.length > 0 ? selectedMedIds[0] : null,
       date_started: dateStarted,
@@ -258,7 +258,7 @@ export default function TreatmentsPage() {
               optional
               value={selectedMedIds[0] || ''}
               onValueChange={val => setSelectedMedIds(val ? [val] : [])}
-              options={allMedications.map((m: any) => ({
+              options={allMedications.map(m => ({
                 value: m.id,
                 label: m.brand_names?.[0] ? `${m.name} (${m.brand_names[0]})` : m.name,
               }))}

@@ -8,7 +8,7 @@ import { searchWiki } from '@/lib/supabase'
 
 type SearchResult = {
   id: string; type: string; name: string; slug: string
-  summary: string; category_name: string; rank: number
+  summary: string; category_name: string; category_slug: string | null; rank: number
 }
 
 function SearchContent() {
@@ -49,8 +49,9 @@ function SearchContent() {
 
   function getLink(result: SearchResult) {
     if (result.type === 'medication') return `/medications/${result.slug}`
-    // For conditions, we need the category slug - use search as fallback
-    return `/search?q=${encodeURIComponent(result.name)}`
+    if (result.category_slug) return `/conditions/${result.category_slug}/${result.slug}`
+    // Fallback if category_slug is missing
+    return `/conditions?highlight=${encodeURIComponent(result.slug)}`
   }
 
   return (
