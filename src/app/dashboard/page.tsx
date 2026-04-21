@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { PawPrint, Activity, Pill, Calendar, FileText, Plus, ChevronRight, AlertCircle, TrendingUp } from 'lucide-react'
 import { supabase, getDogs, getSymptomLogs, getTreatmentLogs, getVetVisits } from '@/lib/supabase'
 
@@ -63,7 +64,7 @@ function DogAge(dob: string | null) {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [dogs, setDogs] = useState<Dog[]>([])
   const [activeDog, setActiveDog] = useState<Dog | null>(null)
@@ -192,7 +193,7 @@ export default function DashboardPage() {
           <div className="card mb-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             <div className="w-20 h-20 rounded-full bg-tanzanite-50 flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-tanzanite-100">
               {activeDog.photo_url ? (
-                <img src={activeDog.photo_url} alt={activeDog.name} className="w-full h-full object-cover" />
+                <Image src={activeDog.photo_url} alt={activeDog.name || 'Dog profile photo'} width={80} height={80} className="w-full h-full object-cover" />
               ) : (
                 <PawPrint className="w-8 h-8 text-tanzanite-300" />
               )}

@@ -24,7 +24,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function SymptomsPage() {
-  const [dogs, setDogs] = useState<any[]>([])
+  const [dogs, setDogs] = useState<{ id: string; name: string }[]>([])
   const [activeDogId, setActiveDogId] = useState<string>('')
   const [logs, setLogs] = useState<SymptomLog[]>([])
   const [loading, setLoading] = useState(true)
