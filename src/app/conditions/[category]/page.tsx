@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, AlertTriangle } from 'lucide-react'
 import { getCategory, getConditionsByCategory } from '@/lib/supabase'
@@ -56,12 +56,7 @@ export default function CategoryPage() {
   }
 
   if (!category) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-tanzanite-800 mb-2">Category not found</h1>
-        <Link href="/conditions" className="btn-primary mt-4 inline-block">Browse All Categories</Link>
-      </div>
-    )
+    notFound()
   }
 
   return (

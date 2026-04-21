@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Pill, AlertTriangle, BookOpen, Stethoscope, Shield, DollarSign } from 'lucide-react'
 import { getMedication } from '@/lib/supabase'
@@ -73,12 +73,7 @@ export default function MedicationPage() {
   }
 
   if (error || !med) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-tanzanite-800 mb-2">Medication not found</h1>
-        <Link href="/medications" className="btn-primary mt-4 inline-block">Browse Medications</Link>
-      </div>
-    )
+    notFound()
   }
 
   const firstLine = med.condition_medications?.filter(cm => cm.is_first_line) || []

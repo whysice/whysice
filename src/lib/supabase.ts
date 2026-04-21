@@ -3,6 +3,14 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
 
+// Warn in development if env vars are missing
+if (typeof window !== 'undefined' && (!supabaseUrl || supabaseUrl.includes('placeholder'))) {
+  console.warn(
+    '[Whysice] Missing NEXT_PUBLIC_SUPABASE_URL — database features will not work. ' +
+    'Copy .env.example to .env.local and fill in your Supabase credentials.'
+  )
+}
+
 // Safe initialization with explicit auth persistence
 export const supabase: SupabaseClient = supabaseUrl && !supabaseUrl.includes('placeholder')
   ? createClient(supabaseUrl, supabaseAnonKey, {

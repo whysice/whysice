@@ -41,10 +41,9 @@ function SearchContent() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`)
-      doSearch(query.trim())
-    }
+    if (loading || !query.trim()) return
+    router.push(`/search?q=${encodeURIComponent(query.trim())}`)
+    doSearch(query.trim())
   }
 
   function getLink(result: SearchResult) {
@@ -60,7 +59,7 @@ function SearchContent() {
 
       <form onSubmit={handleSubmit} className="mb-8">
         <div className="relative">
-          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate" />
+          <SearchIcon className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${loading ? 'text-tanzanite-300 animate-pulse' : 'text-slate'}`} />
           <input
             type="text"
             value={query}
@@ -68,6 +67,7 @@ function SearchContent() {
             placeholder="Search conditions, medications, symptoms..."
             className="search-input pl-12"
             aria-label="Search the wiki"
+            disabled={loading}
             autoFocus
           />
         </div>
