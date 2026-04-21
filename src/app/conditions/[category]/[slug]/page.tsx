@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, BookOpen, Stethoscope, AlertTriangle, Pill, ChevronRight, ExternalLink, Shield } from 'lucide-react'
 import { getCondition } from '@/lib/supabase'
@@ -164,13 +164,7 @@ export default function ConditionPage() {
   }
 
   if (error || !condition) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-tanzanite-800 mb-2">Condition not found</h1>
-        <p className="text-slate mb-6">{error || 'This condition does not exist in the wiki yet.'}</p>
-        <Link href="/conditions" className="btn-primary">Browse Conditions</Link>
-      </div>
-    )
+    notFound()
   }
 
   const ownerContent = condition.detail_owner || {}
