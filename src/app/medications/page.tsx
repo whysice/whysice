@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Pill, DollarSign, ChevronRight, AlertCircle, RotateCcw } from 'lucide-react'
+import { Pill, DollarSign, ChevronRight, AlertCircle, RotateCcw, Search, ArrowRight } from 'lucide-react'
 import { getMedications } from '@/lib/supabase'
 
 type MedCard = {
@@ -58,7 +58,26 @@ export default function MedicationsIndexPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-tanzanite-800 mb-2">Medications</h1>
-      <p className="text-slate mb-8">Drug reference for canine dermatology treatments, grouped by class.</p>
+      <p className="text-slate mb-6">Drug reference for canine dermatology treatments, grouped by class.</p>
+
+      {/* Full Drug Lookup CTA */}
+      <Link
+        href="/medications/lookup"
+        className="block mb-8 p-5 rounded-xl bg-gradient-to-r from-tanzanite-700 to-tanzanite-500 text-white group hover:from-tanzanite-800 hover:to-tanzanite-600 transition-all duration-300 shadow-md hover:shadow-lg"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Search className="w-5 h-5 text-ice-200" />
+              <h3 className="font-bold text-lg">Full Medication Lookup</h3>
+            </div>
+            <p className="text-sm text-tanzanite-100">
+              Search 115+ canine medications with dosing, interactions, safety flags, and monitoring requirements.
+            </p>
+          </div>
+          <ArrowRight className="w-6 h-6 text-ice-200 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+        </div>
+      </Link>
 
       {loading ? (
         <div className="space-y-4">
