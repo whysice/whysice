@@ -97,11 +97,15 @@ export function matchesDrug(drug: DrugEntry, query: string): boolean {
   return words.every(w => haystack.includes(w))
 }
 
-export function slugifyDrug(drug: DrugEntry): string {
-  return drug.genericName
+export function slugifyName(name: string): string {
+  return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+export function slugifyDrug(drug: DrugEntry): string {
+  return slugifyName(drug.genericName)
 }
 
 export function findDrugBySlug(slug: string): DrugEntry | undefined {

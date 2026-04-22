@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Pill, AlertTriangle, BookOpen, Stethoscope, Shield, DollarSign } from 'lucide-react'
+import { ChevronRight, Pill, AlertTriangle, BookOpen, Stethoscope, Shield, DollarSign, ArrowRight } from 'lucide-react'
 import { getMedication } from '@/lib/supabase'
+import { findDrugBySlug, slugifyName } from '@/lib/drugData'
 
 type Medication = {
   id: string; name: string; slug: string; brand_names: string[] | null
@@ -78,6 +79,8 @@ export default function MedicationPage() {
 
   const firstLine = med.condition_medications?.filter(cm => cm.is_first_line) || []
   const secondLine = med.condition_medications?.filter(cm => !cm.is_first_line) || []
+  const vetmedSlug = slugifyName(med.name)
+  const vetmedMatch = findDrugBySlug(vetmedSlug)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -106,7 +109,7 @@ export default function MedicationPage() {
         </div>
 
         {/* View Toggle */}
-        {med.detail_vet && (
+        {(med.detail_vet || vetmedMatch) && (
           <div className="flex items-center bg-tanzanite-50 rounded-lg p-1 self-start">
             <button
               onClick={() => setViewMode('owner')}
@@ -129,29 +132,71 @@ export default function MedicationPage() {
       </div>
 
       {/* Summary */}
-      <div className="card mb-8">
+      <div className="card mb-6">
         <p className="text-body leading-relaxed">{med.summary_owner}</p>
       </div>
+
+      {/* Canonical pharmacology CTA — vetmed is the source of truth for dosing / interactions / safety */}
+      {vetmedMatch && (
+        <Link
+          href={`/vetmed/${vetmedSlug}`}
+          className="block mb-8 p-4 rounded-xl border border-ice-200 bg-ice-50/50 hover:bg-ice-50 hover:border-ice-300 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-lg shadow-sm">
+              <Pill className="w-5 h-5 text-ice-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-tanzanite-800">Full pharmacology in Vet Med</span>
+                <span className="text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-ice-100 text-ice-700">Canonical</span>
+              </div>
+              <p className="text-xs text-slate">
+                Dosing · interactions · safety flags · contraindications · monitoring — maintained in the cross-specialty reference.
+              </p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-ice-600 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Vet Detail */}
-          {viewMode === 'vet' && med.detail_vet && (
-            <div className="card border-ice-200">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-ice-100">
-                <Stethoscope className="w-4 h-4 text-ice-600" />
-                <h2 className="font-semibold text-tanzanite-800">Clinical Detail</h2>
-                <span className="badge bg-ice-50 text-ice-700 text-xs">Professional</span>
-              </div>
-              {Object.entries(med.detail_vet).map(([key, value]) => (
-                <div key={key} className="mb-5">
-                  <h3 className="text-sm font-semibold text-ice-600 uppercase tracking-wide mb-2">{formatKey(key)}</h3>
-                  <p className="text-sm text-body leading-relaxed">{String(value)}</p>
+          {/* Clinician detail — derm-specific context. Pharmacology lives in /vetmed. */}
+          {viewMode === 'vet' && (
+            vetmedMatch ? (
+              <div className="card border-ice-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Stethoscope className="w-4 h-4 text-ice-600" />
+                  <h2 className="font-semibold text-tanzanite-800">Clinical Detail</h2>
+                  <span className="badge bg-ice-50 text-ice-700 text-xs">Professional</span>
                 </div>
-              ))}
-            </div>
+                <p className="text-sm text-body leading-relaxed mb-4">
+                  Full pharmacology (dosing regimens, interactions, monitoring, contraindications) is maintained in{' '}
+                  <Link href={`/vetmed/${vetmedSlug}`} className="text-ice-700 underline font-medium">/vetmed/{vetmedSlug}</Link>{' '}
+                  so the data stays consistent with the cross-specialty reference and doesn&apos;t drift.
+                </p>
+                <Link href={`/vetmed/${vetmedSlug}`} className="btn-primary inline-flex items-center gap-2">
+                  Open Vet Med entry <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ) : med.detail_vet && (
+              <div className="card border-ice-200">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-ice-100">
+                  <Stethoscope className="w-4 h-4 text-ice-600" />
+                  <h2 className="font-semibold text-tanzanite-800">Clinical Detail</h2>
+                  <span className="badge bg-ice-50 text-ice-700 text-xs">Professional</span>
+                </div>
+                {Object.entries(med.detail_vet).map(([key, value]) => (
+                  <div key={key} className="mb-5">
+                    <h3 className="text-sm font-semibold text-ice-600 uppercase tracking-wide mb-2">{formatKey(key)}</h3>
+                    <p className="text-sm text-body leading-relaxed">{String(value)}</p>
+                  </div>
+                ))}
+              </div>
+            )
           )}
 
           {/* Side Effects */}

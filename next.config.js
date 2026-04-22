@@ -10,6 +10,16 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // Former home of the cross-specialty lookup → now /vetmed
+      { source: '/medications/lookup', destination: '/vetmed', permanent: true },
+      // Derm wiki moved under /wiki in the hub restructure
+      { source: '/conditions/:path*', destination: '/wiki/conditions/:path*', permanent: true },
+      { source: '/medications/:path*', destination: '/wiki/medications/:path*', permanent: true },
+      { source: '/search', destination: '/wiki/search', permanent: true },
+    ]
+  },
 }
 
 module.exports = nextConfig

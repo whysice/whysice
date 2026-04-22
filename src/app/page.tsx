@@ -15,7 +15,7 @@ type Tool = {
   description: string
   icon: React.ComponentType<{ className?: string }>
   audience: string
-  status: 'live' | 'beta' | 'coming-soon'
+  status: 'live' | 'beta' | 'preview' | 'coming-soon'
   accent: string
 }
 
@@ -50,7 +50,7 @@ const TOOLS: Tool[] = [
     description: 'Portable universal animal ID — clinic, boarder, border. Same record, species-aware chart.',
     icon: Fingerprint,
     audience: 'Owners + vets',
-    status: 'coming-soon',
+    status: 'preview',
     accent: 'from-slate-700 to-slate-900',
   },
   {
@@ -69,7 +69,15 @@ const TOOLS: Tool[] = [
 const STATUS_LABEL = {
   live: 'Live',
   beta: 'Beta',
+  preview: 'Preview',
   'coming-soon': 'Coming soon',
+} as const
+
+const STATUS_STYLE = {
+  live: 'bg-emerald-50 text-emerald-700',
+  beta: 'bg-blue-50 text-blue-700',
+  preview: 'bg-amber-50 text-amber-700',
+  'coming-soon': 'bg-slate-100 text-slate-600',
 } as const
 
 export default function HubLanding() {
@@ -123,15 +131,16 @@ export default function HubLanding() {
         <div className="grid sm:grid-cols-2 gap-4">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
-            const isLive = tool.status === 'live'
-            const Wrapper: any = isLive ? Link : 'div'
-            const wrapperProps = isLive ? { href: tool.href } : { 'aria-disabled': true }
+            const reachable = tool.status !== 'coming-soon'
+            const Wrapper: any = reachable ? Link : 'div'
+            const wrapperProps = reachable ? { href: tool.href } : { 'aria-disabled': true }
+            const enterLabel = tool.status === 'preview' ? 'View preview' : 'Enter'
             return (
               <Wrapper
                 key={tool.slug}
                 {...wrapperProps}
                 className={`group relative overflow-hidden rounded-2xl border border-tanzanite-100 bg-white transition-all ${
-                  isLive ? 'hover:border-tanzanite-300 hover:shadow-md cursor-pointer' : 'opacity-70'
+                  reachable ? 'hover:border-tanzanite-300 hover:shadow-md cursor-pointer' : 'opacity-70'
                 }`}
               >
                 <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tool.accent}`}/>
@@ -140,9 +149,7 @@ export default function HubLanding() {
                     <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${tool.accent} grid place-items-center`}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
-                    <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded ${
-                      isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
+                    <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded ${STATUS_STYLE[tool.status]}`}>
                       {STATUS_LABEL[tool.status]}
                     </span>
                   </div>
@@ -151,9 +158,9 @@ export default function HubLanding() {
                   <p className="text-sm text-slate leading-relaxed mb-4">{tool.description}</p>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate">For {tool.audience}</span>
-                    {isLive ? (
+                    {reachable ? (
                       <span className="flex items-center gap-1 text-tanzanite-600 font-medium group-hover:gap-2 transition-all">
-                        Enter <ArrowRight className="w-3.5 h-3.5" />
+                        {enterLabel} <ArrowRight className="w-3.5 h-3.5" />
                       </span>
                     ) : (
                       <span className="text-slate-400">Not yet available</span>
