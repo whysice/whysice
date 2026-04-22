@@ -55,7 +55,11 @@ function SearchContent() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-tanzanite-800 mb-6">Search</h1>
+      <h1 className="text-3xl font-bold text-tanzanite-800 mb-2">Search the Wiki</h1>
+      <p className="text-sm text-slate mb-6">
+        Derm-scoped: conditions and wiki medications only. Looking beyond derm?{' '}
+        <Link href="/search" className="text-tanzanite-500 underline">Search all tools</Link>.
+      </p>
 
       <form onSubmit={handleSubmit} className="mb-8">
         <div className="relative">
