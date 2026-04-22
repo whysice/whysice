@@ -97,6 +97,17 @@ export function matchesDrug(drug: DrugEntry, query: string): boolean {
   return words.every(w => haystack.includes(w))
 }
 
+export function slugifyDrug(drug: DrugEntry): string {
+  return drug.genericName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+export function findDrugBySlug(slug: string): DrugEntry | undefined {
+  return DRUGS.find(d => slugifyDrug(d) === slug)
+}
+
 export const DRUGS: DrugEntry[] = [
   {genericName:"Amoxicillin",brandNames:"Amoxil; Amoxi-Tabs",drugClass:"Aminopenicillin antibiotic",indications:"Skin infections; UTIs; respiratory infections; wound infections",dosage:"10-25 mg/kg PO q8-12h",route:"Oral",sideEffects:"Vomiting; diarrhea; soft stool",warnings:"Allergic reactions (rare); anaphylaxis",interactions:"Bacteriostatic antibiotics (tetracyclines; chloramphenicol) may reduce efficacy; methotrexate levels increased; aminoglycosides synergy",foodInteractions:"Give with food to reduce GI upset",contraindications:"Penicillin allergy; caution in renal impairment",monitoring:"None routine; monitor for GI signs",notes:"Broad-spectrum; no beta-lactamase coverage",alsoUsedIn:"Cats; horses; small mammals"},
   {genericName:"Amoxicillin-Clavulanate",brandNames:"Clavamox; Augmentin",drugClass:"Beta-lactam + beta-lactamase inhibitor",indications:"Skin/soft tissue infections; UTIs; bite wounds; dental infections; pyoderma",dosage:"12.5-25 mg/kg PO q12h",route:"Oral",sideEffects:"Vomiting; diarrhea; decreased appetite",warnings:"Hepatotoxicity (rare); allergic reactions",interactions:"Same as amoxicillin; allopurinol may increase rash risk",foodInteractions:"Give with food",contraindications:"Penicillin allergy; severe hepatic disease",monitoring:"Liver values if prolonged use",notes:"Gold standard for empiric skin/bite wound therapy",alsoUsedIn:"Cats"},

@@ -60,24 +60,24 @@ export default function MedicationsIndexPage() {
       <h1 className="text-3xl font-bold text-tanzanite-800 mb-2">Medications</h1>
       <p className="text-slate mb-6">Drug reference for canine dermatology treatments, grouped by class.</p>
 
-      {/* Full Drug Lookup CTA — lives at /vetmed (ships in Phase 2) */}
-      <div
-        aria-disabled="true"
-        className="block mb-8 p-5 rounded-xl bg-gradient-to-r from-tanzanite-700/80 to-tanzanite-500/80 text-white shadow-md"
+      {/* Full Drug Lookup CTA — canonical pharmacology lives at /vetmed */}
+      <Link
+        href="/vetmed"
+        className="block mb-8 p-5 rounded-xl bg-gradient-to-r from-tanzanite-700 to-tanzanite-500 text-white group hover:from-tanzanite-800 hover:to-tanzanite-600 transition-all duration-300 shadow-md hover:shadow-lg"
       >
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Search className="w-5 h-5 text-ice-200" />
               <h3 className="font-bold text-lg">Full Medication Lookup</h3>
-              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-white/20">Coming soon</span>
             </div>
             <p className="text-sm text-tanzanite-100">
-              Cross-specialty reference — 115+ drugs with dosing, interactions, safety flags, and monitoring. Will live at <span className="font-mono">/vetmed</span>.
+              Cross-specialty reference — 115+ drugs across cardiac, chemo, seizure, endocrine &amp; emergency. Dosing, interactions, safety flags, monitoring.
             </p>
           </div>
+          <ArrowRight className="w-6 h-6 text-ice-200 group-hover:translate-x-1 transition-transform flex-shrink-0" />
         </div>
-      </div>
+      </Link>
 
       {loading ? (
         <div className="space-y-4">
