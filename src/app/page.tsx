@@ -87,7 +87,7 @@ export default function HubLanding() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (query.trim()) {
-      router.push(`/wiki/search?q=${encodeURIComponent(query.trim())}`)
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`)
     }
   }
 
@@ -113,9 +113,9 @@ export default function HubLanding() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search the derm wiki…"
+                placeholder="Search across all tools…"
                 className="search-input pl-12 bg-white/95 backdrop-blur"
-                aria-label="Search the derm wiki"
+                aria-label="Search all Whysice tools"
               />
             </div>
           </form>

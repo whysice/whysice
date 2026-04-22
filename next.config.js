@@ -17,7 +17,7 @@ const nextConfig = {
       // Derm wiki moved under /wiki in the hub restructure
       { source: '/conditions/:path*', destination: '/wiki/conditions/:path*', permanent: true },
       { source: '/medications/:path*', destination: '/wiki/medications/:path*', permanent: true },
-      { source: '/search', destination: '/wiki/search', permanent: true },
+      // /search is now the cross-tool hub search; the wiki-scoped search lives at /wiki/search
     ]
   },
 }
