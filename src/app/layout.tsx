@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { PawPrint } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Whysice | Canine Dermatology Wiki',
-  description: 'Evidence-based canine dermatology knowledge base with personal health tracking. Built for dog owners and veterinary professionals.',
+  title: 'Whysice — veterinary tools',
+  description: 'A hub of veterinary tools: a canine dermatology wiki, a cross-specialty drug reference, a universal animal ID, and a personal pet health tracker.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -31,15 +31,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <span className="font-bold text-white">Whysice</span>
                   </div>
                   <p className="text-sm text-tanzanite-300">
-                    Evidence-based canine dermatology knowledge base. Inspired by Icy, born December 27.
+                    Veterinary tools for owners and clinicians. Inspired by Icy, born December 27.
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-white text-sm mb-3">Knowledge Base</h4>
+                  <h4 className="font-semibold text-white text-sm mb-3">Derm Wiki</h4>
                   <div className="space-y-2">
-                    <Link href="/conditions" className="block text-sm hover:text-white transition-colors">Conditions</Link>
-                    <Link href="/medications" className="block text-sm hover:text-white transition-colors">Medications</Link>
-                    <Link href="/search" className="block text-sm hover:text-white transition-colors">Search</Link>
+                    <Link href="/wiki" className="block text-sm hover:text-white transition-colors">Overview</Link>
+                    <Link href="/wiki/conditions" className="block text-sm hover:text-white transition-colors">Conditions</Link>
+                    <Link href="/wiki/medications" className="block text-sm hover:text-white transition-colors">Medications</Link>
+                    <Link href="/wiki/search" className="block text-sm hover:text-white transition-colors">Search</Link>
                   </div>
                 </div>
                 <div>

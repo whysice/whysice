@@ -3,8 +3,23 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { PawPrint, Search, Menu, X } from 'lucide-react'
+import { PawPrint, BookOpen, Pill, Fingerprint, LayoutDashboard, Menu, X } from 'lucide-react'
 import { DashboardSubNav } from './Breadcrumbs'
+
+type Tool = {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  match: (p: string) => boolean
+  disabled?: boolean
+}
+
+const TOOLS: Tool[] = [
+  { href: '/wiki', label: 'Wiki', icon: BookOpen, match: (p) => p === '/wiki' || p.startsWith('/wiki/') },
+  { href: '/vetmed', label: 'Vet Med', icon: Pill, match: (p) => p.startsWith('/vetmed'), disabled: true },
+  { href: '/id', label: 'ID', icon: Fingerprint, match: (p) => p.startsWith('/id'), disabled: true },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p.startsWith('/dashboard') },
+]
 
 export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -21,42 +36,39 @@ export function Navigation() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/conditions"
-              className={`text-sm font-medium transition-colors ${
-                pathname.startsWith('/conditions') ? 'text-white' : 'text-tanzanite-100 hover:text-white'
-              }`}
-            >
-              Conditions
-            </Link>
-            <Link
-              href="/medications"
-              className={`text-sm font-medium transition-colors ${
-                pathname.startsWith('/medications') ? 'text-white' : 'text-tanzanite-100 hover:text-white'
-              }`}
-            >
-              Medications
-            </Link>
-            <Link
-              href="/search"
-              className={`text-sm font-medium transition-colors ${
-                pathname === '/search' ? 'text-white' : 'text-tanzanite-100 hover:text-white'
-              }`}
-            >
-              <Search className="w-4 h-4 inline mr-1" />
-              Search
-            </Link>
-            <Link
-              href="/dashboard"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isDashboard
-                  ? 'bg-tanzanite-400 text-white'
-                  : 'bg-tanzanite-500 hover:bg-tanzanite-400 text-white'
-              }`}
-            >
-              My Dashboard
-            </Link>
+          <div className="hidden md:flex items-center gap-1">
+            {TOOLS.map(({ href, label, icon: Icon, match, disabled }) => {
+              const active = match(pathname)
+              const base = 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors'
+              if (disabled) {
+                return (
+                  <span
+                    key={href}
+                    aria-disabled="true"
+                    title="Coming soon"
+                    className={`${base} text-tanzanite-300 cursor-not-allowed`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </span>
+                )
+              }
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`${base} ${
+                    active
+                      ? 'bg-tanzanite-500 text-white'
+                      : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
+                  }`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </Link>
+              )
+            })}
           </div>
 
           {/* Mobile hamburger */}
@@ -73,42 +85,40 @@ export function Navigation() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden pb-4 border-t border-tanzanite-700 mt-1 pt-3 space-y-1">
-            <Link href="/conditions" onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname.startsWith('/conditions')
-                  ? 'bg-tanzanite-600 text-white'
-                  : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
-              }`}>
-              Conditions
-            </Link>
-            <Link href="/medications" onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname.startsWith('/medications')
-                  ? 'bg-tanzanite-600 text-white'
-                  : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
-              }`}>
-              Medications
-            </Link>
-            <Link href="/search" onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname === '/search'
-                  ? 'bg-tanzanite-600 text-white'
-                  : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
-              }`}>
-              <Search className="w-4 h-4 inline mr-1.5" />Search
-            </Link>
+            {TOOLS.map(({ href, label, icon: Icon, match, disabled }) => {
+              const active = match(pathname)
+              const base = 'flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors'
+              if (disabled) {
+                return (
+                  <span
+                    key={href}
+                    aria-disabled="true"
+                    className={`${base} text-tanzanite-300`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                    <span className="ml-auto text-[10px] uppercase tracking-wider text-tanzanite-400">Soon</span>
+                  </span>
+                )
+              }
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`${base} ${
+                    active
+                      ? 'bg-tanzanite-600 text-white'
+                      : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
+                  }`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </Link>
+              )
+            })}
 
-            {/* Dashboard group with visual nesting */}
-            <Link href="/dashboard" onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDashboard
-                  ? 'bg-tanzanite-500 text-white'
-                  : 'text-tanzanite-100 hover:bg-tanzanite-700 hover:text-white'
-              }`}>
-              My Dashboard
-            </Link>
-
-            {/* Sub-nav with left border grouping */}
             {isDashboard && (
               <div onClick={() => setMobileOpen(false)}>
                 <DashboardSubNav currentPath={pathname} />

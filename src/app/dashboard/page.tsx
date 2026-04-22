@@ -389,7 +389,7 @@ export default function DashboardPage() {
                       </div>
                       {t.medications && (
                         <Link
-                          href={`/medications/${t.medications.slug}`}
+                          href={`/wiki/medications/${t.medications.slug}`}
                           className="text-xs text-tanzanite-500 hover:underline mt-1 inline-block"
                         >
                           Wiki: {t.medications.brand_names?.[0] || t.medications.name}
@@ -662,7 +662,7 @@ function LoginPrompt() {
 
         <p className="text-xs text-slate mt-6">
           The knowledge base is free to browse without an account.{' '}
-          <Link href="/conditions" className="text-tanzanite-500 hover:underline">Browse conditions</Link>
+          <Link href="/wiki/conditions" className="text-tanzanite-500 hover:underline">Browse conditions</Link>
         </p>
       </div>
     </div>

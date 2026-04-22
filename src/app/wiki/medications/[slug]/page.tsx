@@ -83,7 +83,7 @@ export default function MedicationPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-slate mb-6">
-        <Link href="/medications" className="hover:text-tanzanite-500 transition-colors">Medications</Link>
+        <Link href="/wiki/medications" className="hover:text-tanzanite-500 transition-colors">Medications</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-body font-medium">{med.brand_names?.[0] || med.name}</span>
       </nav>
@@ -261,7 +261,7 @@ export default function MedicationPage() {
                   {firstLine.map(cm => (
                     <Link
                       key={cm.conditions.id}
-                      href={`/search?q=${encodeURIComponent(cm.conditions.name)}`}
+                      href={`/wiki/search?q=${encodeURIComponent(cm.conditions.name)}`}
                       className="block p-3 rounded-lg bg-tanzanite-50/50 hover:bg-tanzanite-50 transition-colors"
                     >
                       <span className="font-medium text-sm text-tanzanite-800">{cm.conditions.name}</span>
@@ -279,7 +279,7 @@ export default function MedicationPage() {
                   {secondLine.map(cm => (
                     <Link
                       key={cm.conditions.id}
-                      href={`/search?q=${encodeURIComponent(cm.conditions.name)}`}
+                      href={`/wiki/search?q=${encodeURIComponent(cm.conditions.name)}`}
                       className="block p-3 rounded-lg bg-gray-50 hover:bg-tanzanite-50/50 transition-colors"
                     >
                       <span className="font-medium text-sm text-body">{cm.conditions.name}</span>
