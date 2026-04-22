@@ -39,7 +39,7 @@ const TOOLS: Tool[] = [
     description: 'Dosing, safety flags, interactions, and species contraindications across cardiac, chemo, seizure, endocrine, and emergency drugs.',
     icon: Pill,
     audience: 'Vets + techs',
-    status: 'coming-soon',
+    status: 'live',
     accent: 'from-ice-600 to-ice-800',
   },
   {
@@ -184,7 +184,7 @@ export default function HubLanding() {
               <h3 className="font-semibold text-tanzanite-800">Clinician view</h3>
             </div>
             <p className="text-sm text-slate">
-              Clinical depth in the wiki, plus a cross-specialty drug reference at <span className="font-mono text-ice-700">/vetmed</span> when it ships.
+              Clinical depth in the wiki, plus the cross-specialty drug reference at <Link href="/vetmed" className="text-ice-700 underline font-mono">/vetmed</Link>.
             </p>
           </div>
         </div>

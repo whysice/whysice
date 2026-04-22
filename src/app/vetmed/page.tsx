@@ -1,39 +1,30 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Search, ChevronDown, ChevronUp, AlertTriangle, Shield, Pill, Filter, X } from 'lucide-react'
+import Link from 'next/link'
+import { Search, ChevronDown, ChevronUp, AlertTriangle, Shield, Pill, Filter, X, ExternalLink } from 'lucide-react'
 import {
-  DRUGS, DRUG_CATEGORIES, classifyDrug, getSafetyFlags, hasAnySafetyFlag, matchesDrug,
-  type DrugEntry, type DrugCategory, type SafetyFlags
+  DRUGS, DRUG_CATEGORIES, classifyDrug, getSafetyFlags, hasAnySafetyFlag, matchesDrug, slugifyDrug,
+  type DrugEntry, type DrugCategory, type SafetyFlags,
 } from '@/lib/drugData'
 
 function SafetyBadges({ flags }: { flags: SafetyFlags }) {
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
       {flags.mdr1 && (
-        <span className="badge bg-red-100 text-red-700 text-[10px] font-bold tracking-wider uppercase">
-          MDR1 Alert
-        </span>
+        <span className="badge bg-red-100 text-red-700 text-[10px] font-bold tracking-wider uppercase">MDR1 Alert</span>
       )}
       {flags.boxedWarning && (
-        <span className="badge bg-red-100 text-red-700 text-[10px] font-bold tracking-wider uppercase">
-          FDA Boxed Warning
-        </span>
+        <span className="badge bg-red-100 text-red-700 text-[10px] font-bold tracking-wider uppercase">FDA Boxed Warning</span>
       )}
       {flags.nsaidSteroid && (
-        <span className="badge bg-amber-100 text-amber-700 text-[10px] font-bold tracking-wider uppercase">
-          NSAID/Steroid Rule
-        </span>
+        <span className="badge bg-amber-100 text-amber-700 text-[10px] font-bold tracking-wider uppercase">NSAID/Steroid Rule</span>
       )}
       {flags.speciesContra && (
-        <span className="badge bg-purple-100 text-purple-700 text-[10px] font-bold tracking-wider uppercase">
-          Species Restriction
-        </span>
+        <span className="badge bg-purple-100 text-purple-700 text-[10px] font-bold tracking-wider uppercase">Species Restriction</span>
       )}
       {flags.highRisk && (
-        <span className="badge bg-pink-100 text-pink-700 text-[10px] font-bold tracking-wider uppercase">
-          High Risk
-        </span>
+        <span className="badge bg-pink-100 text-pink-700 text-[10px] font-bold tracking-wider uppercase">High Risk</span>
       )}
     </div>
   )
@@ -63,6 +54,7 @@ function DrugCard({ drug, expanded, onToggle }: { drug: DrugEntry; expanded: boo
   const flags = getSafetyFlags(drug)
   const hasFlags = hasAnySafetyFlag(flags)
   const category = classifyDrug(drug.drugClass)
+  const slug = slugifyDrug(drug)
 
   return (
     <div
@@ -81,9 +73,7 @@ function DrugCard({ drug, expanded, onToggle }: { drug: DrugEntry; expanded: boo
             <span className="text-lg font-bold text-tanzanite-800">{drug.genericName}</span>
             <span className="text-xs text-tanzanite-300 font-medium">{category}</span>
           </div>
-          <p className="text-sm text-slate mt-0.5">
-            {drug.brandNames.replace(/;/g, ' · ')}
-          </p>
+          <p className="text-sm text-slate mt-0.5">{drug.brandNames.replace(/;/g, ' · ')}</p>
           {!expanded && (
             <p className="text-xs text-slate/70 mt-1.5 line-clamp-2">
               {drug.indications.split(';').slice(0, 3).join(' · ')}
@@ -99,7 +89,6 @@ function DrugCard({ drug, expanded, onToggle }: { drug: DrugEntry; expanded: boo
 
       {expanded && (
         <div className="mt-5 pt-4 border-t border-tanzanite-50">
-          {/* Quick facts grid */}
           <div className="grid grid-cols-2 gap-4 mb-5">
             <div>
               <h4 className="text-[10px] font-bold tracking-widest uppercase text-tanzanite-600 mb-1">Dosage</h4>
@@ -125,13 +114,23 @@ function DrugCard({ drug, expanded, onToggle }: { drug: DrugEntry; expanded: boo
               <span className="font-semibold">Also used in:</span> {drug.alsoUsedIn}
             </p>
           )}
+
+          <div className="flex items-center justify-end pt-3 mt-3 border-t border-tanzanite-50">
+            <Link
+              href={`/vetmed/${slug}`}
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-xs text-tanzanite-500 hover:text-tanzanite-700 font-medium"
+            >
+              Permalink <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-export default function MedicationLookupPage() {
+export default function VetMedLookupPage() {
   const [query, setQuery] = useState('')
   const [classFilter, setClassFilter] = useState<DrugCategory>('All')
   const [safetyOnly, setSafetyOnly] = useState(false)
@@ -150,22 +149,20 @@ export default function MedicationLookupPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-tanzanite-50 rounded-lg">
             <Pill className="w-6 h-6 text-tanzanite-500" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-tanzanite-800">Medication Lookup</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-tanzanite-800">Vet Med Lookup</h1>
             <p className="text-sm text-slate">
-              {DRUGS.length} canine medications · Search by name, brand, or condition
+              {DRUGS.length} medications across cardiac, chemo, seizure, endocrine, emergency &amp; more · Search by name, brand, or condition
             </p>
           </div>
         </div>
       </div>
 
-      {/* Search */}
       <div className="mb-4 relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate/50" />
         <input
@@ -175,6 +172,7 @@ export default function MedicationLookupPage() {
           value={query}
           onChange={e => { setQuery(e.target.value); setExpandedIdx(null) }}
           className="search-input pl-12 pr-10"
+          aria-label="Search medications"
         />
         {query && (
           <button
@@ -187,7 +185,6 @@ export default function MedicationLookupPage() {
         )}
       </div>
 
-      {/* Filter bar */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -218,7 +215,6 @@ export default function MedicationLookupPage() {
         </span>
       </div>
 
-      {/* Category filter dropdown */}
       {showFilters && (
         <div className="mb-6 p-4 card">
           <h3 className="text-xs font-bold tracking-widest uppercase text-tanzanite-400 mb-3">Drug Class</h3>
@@ -240,15 +236,12 @@ export default function MedicationLookupPage() {
         </div>
       )}
 
-      {/* Results */}
       <div className="space-y-3">
         {filtered.length === 0 && (
           <div className="card text-center py-12">
             <Search className="w-10 h-10 text-tanzanite-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-body mb-1">No medications found</p>
-            <p className="text-sm text-slate max-w-sm mx-auto">
-              Try a different search term or adjust your filters.
-            </p>
+            <p className="text-sm text-slate max-w-sm mx-auto">Try a different search term or adjust your filters.</p>
           </div>
         )}
         {filtered.map((drug, i) => (
@@ -261,17 +254,13 @@ export default function MedicationLookupPage() {
         ))}
       </div>
 
-      {/* Disclaimer */}
       <div className="mt-10 p-4 rounded-xl bg-tanzanite-50/50 border border-tanzanite-100">
         <div className="flex gap-3">
           <AlertTriangle className="w-5 h-5 text-tanzanite-400 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-slate leading-relaxed">
             <p className="font-semibold text-tanzanite-600 mb-1">Disclaimer</p>
             <p>
-              This reference tool is for informational and educational purposes only. It is not a substitute
-              for professional veterinary advice, diagnosis, or treatment. Dosages shown are typical ranges
-              and may not be appropriate for every patient. Always consult a licensed veterinarian before
-              administering any medication. Verify against current product labels.
+              This reference tool is for informational and educational purposes only. It is not a substitute for professional veterinary advice, diagnosis, or treatment. Dosages shown are typical ranges and may not be appropriate for every patient. Always consult a licensed veterinarian before administering any medication. Verify against current product labels.
             </p>
           </div>
         </div>

@@ -16,7 +16,7 @@ type Tool = {
 
 const TOOLS: Tool[] = [
   { href: '/wiki', label: 'Wiki', icon: BookOpen, match: (p) => p === '/wiki' || p.startsWith('/wiki/') },
-  { href: '/vetmed', label: 'Vet Med', icon: Pill, match: (p) => p.startsWith('/vetmed'), disabled: true },
+  { href: '/vetmed', label: 'Vet Med', icon: Pill, match: (p) => p.startsWith('/vetmed') },
   { href: '/id', label: 'ID', icon: Fingerprint, match: (p) => p.startsWith('/id'), disabled: true },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p.startsWith('/dashboard') },
 ]
