@@ -176,9 +176,9 @@ export default function ConditionPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-slate mb-6">
-        <Link href="/conditions" className="hover:text-tanzanite-500 transition-colors">Conditions</Link>
+        <Link href="/wiki/conditions" className="hover:text-tanzanite-500 transition-colors">Conditions</Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <Link href={`/conditions/${condition.categories.slug}`} className="hover:text-tanzanite-500 transition-colors">
+        <Link href={`/wiki/conditions/${condition.categories.slug}`} className="hover:text-tanzanite-500 transition-colors">
           {condition.categories.name}
         </Link>
         <ChevronRight className="w-3.5 h-3.5" />
@@ -325,7 +325,7 @@ export default function ConditionPage() {
                   {firstLine.map(cm => (
                     <Link
                       key={cm.medications.id}
-                      href={`/medications/${cm.medications.slug}`}
+                      href={`/wiki/medications/${cm.medications.slug}`}
                       className="block p-3 rounded-lg bg-tanzanite-50/50 hover:bg-tanzanite-50 transition-colors group"
                     >
                       <div className="flex items-center justify-between">
@@ -349,7 +349,7 @@ export default function ConditionPage() {
                   {secondLine.map(cm => (
                     <Link
                       key={cm.medications.id}
-                      href={`/medications/${cm.medications.slug}`}
+                      href={`/wiki/medications/${cm.medications.slug}`}
                       className="block p-3 rounded-lg bg-gray-50 hover:bg-tanzanite-50/50 transition-colors group"
                     >
                       <div className="flex items-center justify-between">
@@ -379,7 +379,7 @@ export default function ConditionPage() {
                 {condition.tags.map(tag => (
                   <Link
                     key={tag}
-                    href={`/search?q=${encodeURIComponent(tag)}`}
+                    href={`/wiki/search?q=${encodeURIComponent(tag)}`}
                     className="text-xs px-2 py-1 rounded bg-tanzanite-50 text-tanzanite-500 hover:bg-tanzanite-100 transition-colors"
                   >
                     {tag}

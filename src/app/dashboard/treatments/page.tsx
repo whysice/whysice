@@ -432,7 +432,7 @@ function TreatmentCard({ treatment: t, isPast, onEdit, onMarkPast, onReactivate,
           {t.side_effects_observed && <p className="text-xs text-amber-600 mt-1">{t.side_effects_observed}</p>}
           {t.notes && <p className="text-xs text-slate mt-0.5">{t.notes}</p>}
           {t.medications && (
-            <Link href={`/medications/${t.medications.slug}`}
+            <Link href={`/wiki/medications/${t.medications.slug}`}
               className="text-xs text-tanzanite-500 hover:underline mt-1 inline-block">
               Wiki: {t.medications.brand_names?.[0] || t.medications.name}
             </Link>

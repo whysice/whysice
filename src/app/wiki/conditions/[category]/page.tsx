@@ -63,7 +63,7 @@ export default function CategoryPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-slate mb-6">
-        <Link href="/conditions" className="hover:text-tanzanite-500 transition-colors">Conditions</Link>
+        <Link href="/wiki/conditions" className="hover:text-tanzanite-500 transition-colors">Conditions</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-body font-medium">{category.name}</span>
       </nav>
@@ -83,7 +83,7 @@ export default function CategoryPage() {
         {conditions.map(cond => (
           <Link
             key={cond.id}
-            href={`/conditions/${categorySlug}/${cond.slug}`}
+            href={`/wiki/conditions/${categorySlug}/${cond.slug}`}
             className="card block group hover:border-tanzanite-200 transition-all"
           >
             <div className="flex items-start justify-between gap-4">

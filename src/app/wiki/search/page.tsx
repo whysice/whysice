@@ -42,15 +42,15 @@ function SearchContent() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (loading || !query.trim()) return
-    router.push(`/search?q=${encodeURIComponent(query.trim())}`)
+    router.push(`/wiki/search?q=${encodeURIComponent(query.trim())}`)
     doSearch(query.trim())
   }
 
   function getLink(result: SearchResult) {
-    if (result.type === 'medication') return `/medications/${result.slug}`
-    if (result.category_slug) return `/conditions/${result.category_slug}/${result.slug}`
+    if (result.type === 'medication') return `/wiki/medications/${result.slug}`
+    if (result.category_slug) return `/wiki/conditions/${result.category_slug}/${result.slug}`
     // Fallback if category_slug is missing
-    return `/conditions?highlight=${encodeURIComponent(result.slug)}`
+    return `/wiki/conditions?highlight=${encodeURIComponent(result.slug)}`
   }
 
   return (
@@ -90,8 +90,8 @@ function SearchContent() {
             Try different keywords or browse by category.
           </p>
           <div className="flex justify-center gap-3">
-            <Link href="/conditions" className="btn-secondary text-sm">Browse Conditions</Link>
-            <Link href="/medications" className="btn-secondary text-sm">Browse Medications</Link>
+            <Link href="/wiki/conditions" className="btn-secondary text-sm">Browse Conditions</Link>
+            <Link href="/wiki/medications" className="btn-secondary text-sm">Browse Medications</Link>
           </div>
         </div>
       )}

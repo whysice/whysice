@@ -1,44 +1,103 @@
 'use client'
 
 import Link from 'next/link'
-import { Search, BookOpen, Stethoscope, PawPrint, ShieldAlert, Footprints, Bug, Dna, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  Search, BookOpen, Pill, Fingerprint, LayoutDashboard, ArrowRight, PawPrint, Stethoscope,
+} from 'lucide-react'
 
-const CATEGORIES = [
-  { name: 'Allergies & Atopy', slug: 'allergies-atopy', icon: ShieldAlert, description: 'Environmental allergies, atopic dermatitis, food reactions', color: 'bg-tanzanite-50 text-tanzanite-700 border-tanzanite-200' },
-  { name: 'Interdigital Cysts', slug: 'interdigital-furunculosis', icon: Footprints, description: 'Paw infections, furunculosis, pododermatitis', color: 'bg-red-50 text-red-700 border-red-200' },
-  { name: 'Infections', slug: 'infections', icon: Bug, description: 'Pyoderma, yeast, ringworm, secondary infections', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { name: 'Breed-Specific', slug: 'breed-specific', icon: Dna, description: 'Conditions with strong breed predispositions', color: 'bg-ice-50 text-ice-700 border-ice-200' },
+type Tool = {
+  slug: string
+  href: string
+  label: string
+  tagline: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+  audience: string
+  status: 'live' | 'beta' | 'coming-soon'
+  accent: string
+}
+
+const TOOLS: Tool[] = [
+  {
+    slug: 'wiki',
+    href: '/wiki',
+    label: 'Derm Wiki',
+    tagline: 'Evidence-based canine dermatology',
+    description: 'Conditions, differentials, and derm-curated medications. Plain-language and clinical layers in one article.',
+    icon: BookOpen,
+    audience: 'Owners + vets',
+    status: 'live',
+    accent: 'from-tanzanite-600 to-tanzanite-800',
+  },
+  {
+    slug: 'vetmed',
+    href: '/vetmed',
+    label: 'Vet Med Lookup',
+    tagline: '115-drug cross-specialty reference',
+    description: 'Dosing, safety flags, interactions, and species contraindications across cardiac, chemo, seizure, endocrine, and emergency drugs.',
+    icon: Pill,
+    audience: 'Vets + techs',
+    status: 'coming-soon',
+    accent: 'from-ice-600 to-ice-800',
+  },
+  {
+    slug: 'id',
+    href: '/id',
+    label: 'Whysice ID',
+    tagline: 'One ID, every animal',
+    description: 'Portable universal animal ID — clinic, boarder, border. Same record, species-aware chart.',
+    icon: Fingerprint,
+    audience: 'Owners + vets',
+    status: 'coming-soon',
+    accent: 'from-slate-700 to-slate-900',
+  },
+  {
+    slug: 'dashboard',
+    href: '/dashboard',
+    label: 'Health Tracker',
+    tagline: 'Track symptoms, treatments, flares',
+    description: 'Personal symptom log, treatment timeline, and vet-prep export. Free for pet owners.',
+    icon: LayoutDashboard,
+    audience: 'Owners',
+    status: 'live',
+    accent: 'from-tanzanite-500 to-ice-600',
+  },
 ]
 
-export default function HomePage() {
+const STATUS_LABEL = {
+  live: 'Live',
+  beta: 'Beta',
+  'coming-soon': 'Coming soon',
+} as const
+
+export default function HubLanding() {
   const [query, setQuery] = useState('')
   const router = useRouter()
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`)
+      router.push(`/wiki/search?q=${encodeURIComponent(query.trim())}`)
     }
   }
 
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-b from-tanzanite-800 to-tanzanite-700 text-white py-20 px-4">
+      <section className="bg-gradient-to-b from-tanzanite-800 to-tanzanite-700 text-white py-16 sm:py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <PawPrint className="w-8 h-8 text-ice-200" />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Canine Dermatology Wiki
+            Whysice
           </h1>
           <p className="text-tanzanite-200 text-lg mb-8 max-w-xl mx-auto">
-            Evidence-based skin condition information for dog owners and veterinary professionals. Search conditions, medications, and treatment protocols.
+            Veterinary tools for owners and clinicians. One brand, four surfaces — a derm wiki, a cross-specialty drug reference, a universal animal ID, and a personal health tracker.
           </p>
 
-          {/* Search bar */}
           <form onSubmit={handleSearch} className="max-w-xl mx-auto">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate" />
@@ -46,97 +105,88 @@ export default function HomePage() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search conditions, medications, symptoms..."
+                placeholder="Search the derm wiki…"
                 className="search-input pl-12 bg-white/95 backdrop-blur"
-                aria-label="Search the wiki"
+                aria-label="Search the derm wiki"
               />
             </div>
           </form>
         </div>
       </section>
 
-      {/* Content Layer Toggle Info */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex flex-col md:flex-row gap-6 mb-12">
-          <div className="flex-1 card border-l-4 border-l-tanzanite-500">
-            <div className="flex items-center gap-3 mb-2">
-              <BookOpen className="w-5 h-5 text-tanzanite-500" />
-              <h3 className="font-semibold text-tanzanite-800">Owner View</h3>
-            </div>
-            <p className="text-sm text-slate">
-              Plain-language explanations, practical care tips, and when to see your vet. Designed for pet parents.
-            </p>
-          </div>
-          <div className="flex-1 card border-l-4 border-l-ice-500">
-            <div className="flex items-center gap-3 mb-2">
-              <Stethoscope className="w-5 h-5 text-ice-600" />
-              <h3 className="font-semibold text-tanzanite-800">Vet Detail</h3>
-            </div>
-            <p className="text-sm text-slate">
-              Clinical depth: differentials, pharmacokinetics, evidence grading, and treatment algorithms. Toggle on any article.
-            </p>
-          </div>
+      {/* Tool directory */}
+      <section className="max-w-7xl mx-auto px-4 py-12 sm:py-16">
+        <div className="flex items-end justify-between mb-6">
+          <h2 className="text-2xl font-bold text-tanzanite-800">Tools</h2>
+          <p className="text-sm text-slate hidden sm:block">Pick a surface to enter.</p>
         </div>
-
-        {/* Category Grid */}
-        <h2 className="text-2xl font-bold text-tanzanite-800 mb-6">Browse by Category</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {CATEGORIES.map((cat) => {
-            const Icon = cat.icon
+        <div className="grid sm:grid-cols-2 gap-4">
+          {TOOLS.map((tool) => {
+            const Icon = tool.icon
+            const isLive = tool.status === 'live'
+            const Wrapper: any = isLive ? Link : 'div'
+            const wrapperProps = isLive ? { href: tool.href } : { 'aria-disabled': true }
             return (
-              <Link
-                key={cat.slug}
-                href={`/conditions/${cat.slug}`}
-                className={`card group border ${cat.color} hover:scale-[1.02] transition-transform duration-200`}
+              <Wrapper
+                key={tool.slug}
+                {...wrapperProps}
+                className={`group relative overflow-hidden rounded-2xl border border-tanzanite-100 bg-white transition-all ${
+                  isLive ? 'hover:border-tanzanite-300 hover:shadow-md cursor-pointer' : 'opacity-70'
+                }`}
               >
-                <Icon className="w-8 h-8 mb-3 opacity-80" />
-                <h3 className="font-semibold text-base mb-1">{cat.name}</h3>
-                <p className="text-sm opacity-75">{cat.description}</p>
-                <div className="flex items-center gap-1 mt-3 text-sm font-medium opacity-60 group-hover:opacity-100 transition-opacity">
-                  Browse <ArrowRight className="w-3.5 h-3.5" />
+                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tool.accent}`}/>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${tool.accent} grid place-items-center`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded ${
+                      isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {STATUS_LABEL[tool.status]}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-tanzanite-800 mb-1">{tool.label}</h3>
+                  <p className="text-sm text-tanzanite-600 font-medium mb-2">{tool.tagline}</p>
+                  <p className="text-sm text-slate leading-relaxed mb-4">{tool.description}</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate">For {tool.audience}</span>
+                    {isLive ? (
+                      <span className="flex items-center gap-1 text-tanzanite-600 font-medium group-hover:gap-2 transition-all">
+                        Enter <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Not yet available</span>
+                    )}
+                  </div>
                 </div>
-              </Link>
+              </Wrapper>
             )
           })}
         </div>
       </section>
 
-      {/* Quick Access */}
-      <section className="bg-tanzanite-50/50 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-tanzanite-800 mb-6">Common Medications</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { name: 'Apoquel', generic: 'Oclacitinib', slug: 'oclacitinib-apoquel', class: 'JAK inhibitor' },
-              { name: 'Cytopoint', generic: 'Lokivetmab', slug: 'lokivetmab-cytopoint', class: 'Monoclonal antibody' },
-              { name: 'Atopica', generic: 'Cyclosporine', slug: 'cyclosporine-atopica', class: 'Calcineurin inhibitor' },
-              { name: 'Cephalexin', generic: 'Cephalexin', slug: 'cephalexin', class: 'Antibiotic' },
-            ].map((med) => (
-              <Link
-                key={med.slug}
-                href={`/medications/${med.slug}`}
-                className="card group"
-              >
-                <span className="badge badge-medication mb-2">{med.class}</span>
-                <h3 className="font-semibold text-tanzanite-800">{med.name}</h3>
-                <p className="text-sm text-slate">{med.generic}</p>
-              </Link>
-            ))}
+      {/* Audience split */}
+      <section className="bg-tanzanite-50/60 py-12 px-4">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-4">
+          <div className="card border-l-4 border-l-tanzanite-500">
+            <div className="flex items-center gap-3 mb-2">
+              <BookOpen className="w-5 h-5 text-tanzanite-500" />
+              <h3 className="font-semibold text-tanzanite-800">Owner view</h3>
+            </div>
+            <p className="text-sm text-slate">
+              Plain-language explanations, practical care tips, flare tracking. Start at the <Link href="/wiki" className="text-tanzanite-600 underline">wiki</Link> or the <Link href="/dashboard" className="text-tanzanite-600 underline">tracker</Link>.
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* Track Your Dog CTA */}
-      <section className="py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <PawPrint className="w-10 h-10 text-tanzanite-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-tanzanite-800 mb-3">Track Your Dog's Skin Health</h2>
-          <p className="text-slate mb-6 max-w-xl mx-auto">
-            Log symptoms, track treatments, monitor flare patterns, and generate vet-ready health summaries. Free for all dog owners.
-          </p>
-          <Link href="/dashboard" className="btn-primary inline-block">
-            Start Tracking
-          </Link>
+          <div className="card border-l-4 border-l-ice-500">
+            <div className="flex items-center gap-3 mb-2">
+              <Stethoscope className="w-5 h-5 text-ice-600" />
+              <h3 className="font-semibold text-tanzanite-800">Clinician view</h3>
+            </div>
+            <p className="text-sm text-slate">
+              Clinical depth in the wiki, plus a cross-specialty drug reference at <span className="font-mono text-ice-700">/vetmed</span> when it ships.
+            </p>
+          </div>
         </div>
       </section>
     </div>

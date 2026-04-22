@@ -76,7 +76,7 @@ export default function ConditionsIndexPage() {
             return (
               <Link
                 key={cat.id}
-                href={`/conditions/${cat.slug}`}
+                href={`/wiki/conditions/${cat.slug}`}
                 className={`card group border ${color} hover:scale-[1.02] transition-transform duration-200`}
               >
                 <Icon className="w-8 h-8 mb-3 opacity-80" />

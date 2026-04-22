@@ -60,24 +60,24 @@ export default function MedicationsIndexPage() {
       <h1 className="text-3xl font-bold text-tanzanite-800 mb-2">Medications</h1>
       <p className="text-slate mb-6">Drug reference for canine dermatology treatments, grouped by class.</p>
 
-      {/* Full Drug Lookup CTA */}
-      <Link
-        href="/medications/lookup"
-        className="block mb-8 p-5 rounded-xl bg-gradient-to-r from-tanzanite-700 to-tanzanite-500 text-white group hover:from-tanzanite-800 hover:to-tanzanite-600 transition-all duration-300 shadow-md hover:shadow-lg"
+      {/* Full Drug Lookup CTA — lives at /vetmed (ships in Phase 2) */}
+      <div
+        aria-disabled="true"
+        className="block mb-8 p-5 rounded-xl bg-gradient-to-r from-tanzanite-700/80 to-tanzanite-500/80 text-white shadow-md"
       >
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Search className="w-5 h-5 text-ice-200" />
               <h3 className="font-bold text-lg">Full Medication Lookup</h3>
+              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-white/20">Coming soon</span>
             </div>
             <p className="text-sm text-tanzanite-100">
-              Search 115+ canine medications with dosing, interactions, safety flags, and monitoring requirements.
+              Cross-specialty reference — 115+ drugs with dosing, interactions, safety flags, and monitoring. Will live at <span className="font-mono">/vetmed</span>.
             </p>
           </div>
-          <ArrowRight className="w-6 h-6 text-ice-200 group-hover:translate-x-1 transition-transform flex-shrink-0" />
         </div>
-      </Link>
+      </div>
 
       {loading ? (
         <div className="space-y-4">
@@ -114,7 +114,7 @@ export default function MedicationsIndexPage() {
                 {meds.map(med => (
                   <Link
                     key={med.id}
-                    href={`/medications/${med.slug}`}
+                    href={`/wiki/medications/${med.slug}`}
                     className="card block group hover:border-tanzanite-200 transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">

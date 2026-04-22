@@ -10,8 +10,8 @@ export default function NotFound() {
         The page you&apos;re looking for doesn&apos;t exist or may have been moved.
       </p>
       <div className="flex justify-center gap-3">
-        <Link href="/conditions" className="btn-primary">Browse Conditions</Link>
-        <Link href="/search" className="btn-secondary inline-flex items-center gap-1">
+        <Link href="/wiki/conditions" className="btn-primary">Browse Conditions</Link>
+        <Link href="/wiki/search" className="btn-secondary inline-flex items-center gap-1">
           <Search className="w-4 h-4" /> Search
         </Link>
       </div>
