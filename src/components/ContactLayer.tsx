@@ -56,7 +56,7 @@ export function ContactLayer() {
                   Get in touch
                 </h2>
                 <p className="text-sm text-slate mt-0.5">
-                  Questions, feedback, or just want to say hi.
+                  Questions or feedback. I&apos;d love to hear from you.
                 </p>
               </div>
               <button
