@@ -53,9 +53,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 </div>
               </div>
-              <div className="border-t border-tanzanite-700 mt-8 pt-6 text-center">
+              <div className="border-t border-tanzanite-700 mt-8 pt-6 text-center space-y-2">
                 <p className="text-xs text-tanzanite-400">
                   Not a substitute for veterinary advice. Always consult your veterinarian.
+                </p>
+                <p className="text-xs text-tanzanite-400">
+                  &copy; {new Date().getFullYear()} Whysice. All rights reserved.
                 </p>
               </div>
             </div>
