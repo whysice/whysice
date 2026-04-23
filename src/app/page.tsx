@@ -50,7 +50,7 @@ const TOOLS: Tool[] = [
     description: 'Portable universal animal ID — clinic, boarder, border. Same record, species-aware chart.',
     icon: Fingerprint,
     audience: 'Owners + vets',
-    status: 'preview',
+    status: 'live',
     accent: 'from-slate-700 to-slate-900',
   },
   {
