@@ -444,3 +444,114 @@ export async function listDocuments(dogId: string) {
 
   return allFiles
 }
+
+// ============================================
+// WHYSICE ID (requires auth except getSharedDog)
+// ============================================
+
+export type DogIdFields = {
+  microchip_id: string | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+  primary_vet_name: string | null
+  primary_vet_phone: string | null
+}
+
+export type DogForId = DogIdFields & {
+  id: string
+  name: string
+  breed: string | null
+  dob: string | null
+  weight_lbs: number | null
+  known_allergies: string[] | null
+  photo_url: string | null
+  share_token: string | null
+  share_expires_at: string | null
+}
+
+export type SharedDog = Omit<DogForId, 'id' | 'share_token'> & {
+  active_treatments: Array<{
+    treatment_name: string
+    dosage: string | null
+    frequency: string | null
+    date_started: string
+    medication_name: string | null
+    medication_slug: string | null
+  }>
+}
+
+// Owner-gated fetch of a dog with its ID-specific fields. Relies on
+// existing "Users manage own dogs" RLS to enforce ownership.
+export async function getDogForId(dogId: string): Promise<DogForId | null> {
+  const { data, error } = await supabase
+    .from('dogs')
+    .select(`
+      id, name, breed, dob, weight_lbs, known_allergies, photo_url,
+      microchip_id, emergency_contact_name, emergency_contact_phone,
+      primary_vet_name, primary_vet_phone,
+      share_token, share_expires_at
+    `)
+    .eq('id', dogId)
+    .maybeSingle()
+  if (error) throw error
+  return data as DogForId | null
+}
+
+// Update the ID-specific fields on a dog. RLS gates to the owner.
+export async function updateDogIdFields(
+  dogId: string,
+  fields: Partial<DogIdFields>,
+): Promise<DogForId> {
+  const { data, error } = await supabase
+    .from('dogs')
+    .update(fields)
+    .eq('id', dogId)
+    .select(`
+      id, name, breed, dob, weight_lbs, known_allergies, photo_url,
+      microchip_id, emergency_contact_name, emergency_contact_phone,
+      primary_vet_name, primary_vet_phone,
+      share_token, share_expires_at
+    `)
+    .single()
+  if (error) throw error
+  return data as DogForId
+}
+
+// Rotate (or create) a share token for a dog. An expiresAt Date is
+// optional — omit for a token with no expiry until it's revoked.
+export async function generateShareToken(
+  dogId: string,
+  expiresAt?: Date | null,
+): Promise<{ share_token: string; share_expires_at: string | null }> {
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random UUID is not available in this environment')
+  }
+  const token = crypto.randomUUID()
+  const expiresIso = expiresAt ? expiresAt.toISOString() : null
+  const { data: updated, error: updateError } = await supabase
+    .from('dogs')
+    .update({ share_token: token, share_expires_at: expiresIso })
+    .eq('id', dogId)
+    .select('share_token, share_expires_at')
+    .single()
+  if (updateError) throw updateError
+  return updated as { share_token: string; share_expires_at: string | null }
+}
+
+export async function revokeShare(dogId: string): Promise<void> {
+  const { error } = await supabase
+    .from('dogs')
+    .update({ share_token: null, share_expires_at: null })
+    .eq('id', dogId)
+  if (error) throw error
+}
+
+// Public, unauthenticated fetch of a dog by share token. The RPC on
+// the Postgres side enforces token validity and expiry, so callers
+// don't need to (and can't) check RLS on `dogs` directly.
+export async function getSharedDog(token: string): Promise<SharedDog | null> {
+  const { data, error } = await supabase
+    .rpc('get_shared_dog', { share_token_param: token })
+  if (error) throw error
+  return (data as SharedDog | null) ?? null
+}
