@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import '../styles/globals.css'
 import { Navigation } from '@/components/Navigation'
+import { ContactLayer } from '@/components/ContactLayer'
 import { ToastProvider } from '@/contexts/ToastContext'
 import Link from 'next/link'
 import { PawPrint } from 'lucide-react'
@@ -63,6 +64,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </footer>
+
+          <ContactLayer />
         </ToastProvider>
       </body>
     </html>
