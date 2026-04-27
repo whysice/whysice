@@ -33,7 +33,12 @@ module.exports = {
         },
         // Utility
         body: '#1A1A2E',
-        slate: '#6C7A89',
+        // WCAG 1.4.3 AA: tightened from #6C7A89 (4.6:1, just barely passing)
+        // to #5A6878 (5.7:1) — matches the :root --slate variable in
+        // globals.css and gives a safer headroom on white. Any place using
+        // text-slate/70 now lands at ~4.0:1 for large text only; for normal
+        // text, prefer text-body/70 (~4.6:1).
+        slate: '#5A6878',
         gold: '#D4A843',
       },
       fontFamily: {
