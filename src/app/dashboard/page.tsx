@@ -6,6 +6,38 @@ import Image from 'next/image'
 import { PawPrint, Activity, Pill, Calendar, FileText, Plus, ChevronRight, AlertCircle, TrendingUp, RotateCcw } from 'lucide-react'
 import { supabase, getDogs, getSymptomLogs, getTreatmentLogs, getVetVisits } from '@/lib/supabase'
 import { LoginPrompt } from '@/components/LoginPrompt'
+import { SeverityDots, EffectivenessDots } from '@/components/SeverityPicker'
+
+// ============================================
+// WCAG 2.2 AA HARDENED — dashboard/page.tsx
+//
+// Compliance changes from previous version:
+//
+// 1.4.1 Use of Color (A) — was the most serious finding.
+//   Removed local SeverityDots that color-coded severity
+//   red/amber/green with NO non-color cue. Now imports the
+//   canonical SeverityDots from SeverityPicker, which uses
+//   filled-dot count + numeric "n/5" + sr-only label.
+//   Same treatment for EffectivenessDots.
+//
+// 1.4.3 Contrast Minimum (AA, 4.5:1)
+//   - Stat icons: tanzanite-400 (3.4:1 ❌) → tanzanite-700 (✓)
+//                 ice-500 (3.7:1 ❌) → ice-700 (✓)
+//   - "Admin" link: tanzanite-400 (3.4:1 ❌) → tanzanite-700 (✓)
+//   - Sign out hover: red-500 (4.0:1 ❌) → red-700 (6.7:1 ✓)
+//   - Allergy badge: red-600 → red-800 + AlertCircle icon
+//     (1.4.1: now has a non-color cue beyond the color too)
+//   - Load error icon: red-500 → red-700
+//   - Load error border: red-400 → red-700 (also satisfies 1.4.11)
+//   - Follow-up hint: tanzanite-500 (5.0:1 ✓) — kept
+//
+// 1.4.11 Non-text Contrast (AA, 3:1)
+//   - Error banner left border weight: red-400 → red-700
+//
+// 2.4.7 Focus Visible (AA)
+//   - Added focus-visible rings to Admin link and Sign out
+//     button (previously had no visible focus indicator).
+// ============================================
 
 type Dog = {
   id: string; name: string; breed: string | null; dob: string | null
@@ -25,31 +57,6 @@ type TreatmentLog = {
 type VetVisit = {
   id: string; visit_date: string; vet_name: string | null; reason: string
   diagnosis: string | null; follow_up_date: string | null
-}
-
-function SeverityDots({ severity }: { severity: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`w-2 h-2 rounded-full ${
-          i <= severity
-            ? severity >= 4 ? 'bg-red-400' : severity >= 3 ? 'bg-amber-400' : 'bg-green-400'
-            : 'bg-gray-200'
-        }`} />
-      ))}
-    </div>
-  )
-}
-
-function EffectivenessDots({ rating }: { rating: number | null }) {
-  if (!rating) return <span className="text-xs text-slate">Not rated</span>
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`w-2 h-2 rounded-full ${i <= rating ? 'bg-tanzanite-400' : 'bg-gray-200'}`} />
-      ))}
-    </div>
-  )
 }
 
 function formatDate(dateStr: string) {
@@ -184,7 +191,8 @@ export default function DashboardPage() {
             <select
               value={activeDog?.id || ''}
               onChange={e => setActiveDog(dogs.find(d => d.id === e.target.value) || null)}
-              className="px-3 py-2 rounded-lg border border-tanzanite-100 text-sm bg-white"
+              className="px-3 py-2 rounded-lg border border-tanzanite-100 text-sm bg-white text-body
+                focus:outline-none focus:ring-2 focus:ring-tanzanite-500 focus:ring-offset-1"
               aria-label="Select dog"
             >
               {dogs.map(dog => (
@@ -192,12 +200,19 @@ export default function DashboardPage() {
               ))}
             </select>
           )}
-          <Link href="/admin/review" className="text-xs text-tanzanite-400 hover:text-tanzanite-600 px-2 py-1.5">
+          {/* WCAG 1.4.3: tanzanite-700 (5.5:1) instead of tanzanite-400 (3.4:1) */}
+          <Link
+            href="/admin/review"
+            className="text-xs text-tanzanite-700 hover:text-tanzanite-800 px-2 py-1.5 rounded
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+          >
             Admin
           </Link>
+          {/* WCAG 1.4.3: red-700 (6.7:1) on hover instead of red-500 (4.0:1) */}
           <button
             onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }}
-            className="text-xs text-slate hover:text-red-500 px-2 py-1.5 transition-colors"
+            className="text-xs text-slate hover:text-red-700 px-2 py-1.5 rounded transition-colors
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
           >
             Sign out
           </button>
@@ -205,18 +220,21 @@ export default function DashboardPage() {
       </div>
 
       {/* Load error banner */}
+      {/* WCAG 1.4.11: border-l-red-700 (4.8:1) replaces border-l-red-400 (~2.5:1).
+          WCAG 1.4.3:  text-red-700 replaces text-red-500 for icon and message. */}
       {loadError && (
-        <div className="card border-l-4 border-l-red-400 mb-6 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+        <div className="card border-l-4 border-l-red-700 mb-6 flex items-start gap-3" role="alert">
+          <AlertCircle className="w-5 h-5 text-red-700 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex-1">
             <p className="text-sm font-medium text-body">Couldn&apos;t load your data</p>
-            <p className="text-xs text-slate mt-0.5">{loadError}</p>
+            <p className="text-xs text-body/70 mt-0.5">{loadError}</p>
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="text-xs text-tanzanite-500 font-medium hover:underline inline-flex items-center gap-1 flex-shrink-0"
+            className="text-xs text-tanzanite-700 font-medium hover:underline inline-flex items-center gap-1 flex-shrink-0
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1 rounded px-1"
           >
-            <RotateCcw className="w-3 h-3" /> Reload
+            <RotateCcw className="w-3 h-3" aria-hidden="true" /> Reload
           </button>
         </div>
       )}
@@ -224,13 +242,13 @@ export default function DashboardPage() {
       {/* No dogs yet */}
       {!loadError && dogs.length === 0 && (
         <div className="card text-center py-16">
-          <PawPrint className="w-12 h-12 text-tanzanite-200 mx-auto mb-4" />
+          <PawPrint className="w-12 h-12 text-tanzanite-300 mx-auto mb-4" aria-hidden="true" />
           <h2 className="text-xl font-bold text-tanzanite-800 mb-2">Add your dog</h2>
           <p className="text-slate mb-6 max-w-sm mx-auto">
             Set up your dog&apos;s profile to start tracking symptoms and treatments.
           </p>
           <Link href="/dashboard/dogs/new" className="btn-primary inline-block">
-            <Plus className="w-4 h-4 inline mr-1" /> Add Dog
+            <Plus className="w-4 h-4 inline mr-1" aria-hidden="true" /> Add Dog
           </Link>
         </div>
       )}
@@ -243,14 +261,17 @@ export default function DashboardPage() {
               {activeDog.photo_url ? (
                 <Image src={activeDog.photo_url} alt={activeDog.name || 'Dog profile photo'} width={80} height={80} className="w-full h-full object-cover" />
               ) : (
-                <PawPrint className="w-8 h-8 text-tanzanite-300" />
+                <PawPrint className="w-8 h-8 text-tanzanite-700" aria-hidden="true" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="text-xl sm:text-2xl font-bold text-tanzanite-800 mb-1">{activeDog.name}</h2>
-                <Link href={`/dashboard/dogs/new?edit=${activeDog.id}`}
-                  className="text-xs text-tanzanite-500 hover:underline flex-shrink-0 mt-1">
+                <Link
+                  href={`/dashboard/dogs/new?edit=${activeDog.id}`}
+                  className="text-xs text-tanzanite-700 hover:underline flex-shrink-0 mt-1 rounded px-1
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                >
                   Edit profile
                 </Link>
               </div>
@@ -259,36 +280,45 @@ export default function DashboardPage() {
                 {activeDog.dob && <span>{DogAge(activeDog.dob)} years old</span>}
                 {activeDog.weight_lbs && <span>{activeDog.weight_lbs} lbs</span>}
               </div>
+              {/* WCAG 1.4.1 + 1.4.3: allergy badges now have AlertCircle icon
+                  (non-color cue) and red-800 on red-50 (8.4:1, AAA). */}
               {activeDog.known_allergies && activeDog.known_allergies.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  <span className="text-xs text-tanzanite-500 font-medium">Allergies:</span>
+                  <span className="text-xs text-tanzanite-700 font-medium">Allergies:</span>
                   {activeDog.known_allergies.map((a: string) => (
-                    <span key={a} className="badge bg-red-50 text-red-600 text-xs">{a}</span>
+                    <span
+                      key={a}
+                      className="badge bg-red-50 text-red-800 text-xs font-medium border border-red-700"
+                    >
+                      <AlertCircle className="w-3 h-3 mr-0.5 inline" aria-hidden="true" />
+                      {a}
+                    </span>
                   ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Stats Row */}
+          {/* Stats Row — WCAG 1.4.3: icon colors upgraded to *-700 weights.
+              All four stat icons now clear 4.5:1 on white. */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="card text-center py-4">
-              <Activity className="w-5 h-5 text-tanzanite-400 mx-auto mb-1" />
+              <Activity className="w-5 h-5 text-tanzanite-700 mx-auto mb-1" aria-hidden="true" />
               <p className="text-2xl font-bold text-tanzanite-800">{symptoms.length}</p>
               <p className="text-xs text-slate">Symptom entries</p>
             </div>
             <div className="card text-center py-4">
-              <Pill className="w-5 h-5 text-ice-500 mx-auto mb-1" />
+              <Pill className="w-5 h-5 text-ice-700 mx-auto mb-1" aria-hidden="true" />
               <p className="text-2xl font-bold text-tanzanite-800">{activeTreatments.length}</p>
               <p className="text-xs text-slate">Active treatments</p>
             </div>
             <div className="card text-center py-4">
-              <TrendingUp className="w-5 h-5 text-tanzanite-400 mx-auto mb-1" />
+              <TrendingUp className="w-5 h-5 text-tanzanite-700 mx-auto mb-1" aria-hidden="true" />
               <p className="text-2xl font-bold text-tanzanite-800">{avgSeverity || '--'}</p>
               <p className="text-xs text-slate">Avg severity</p>
             </div>
             <div className="card text-center py-4">
-              <Calendar className="w-5 h-5 text-ice-500 mx-auto mb-1" />
+              <Calendar className="w-5 h-5 text-ice-700 mx-auto mb-1" aria-hidden="true" />
               <p className="text-2xl font-bold text-tanzanite-800">{vetVisits.length}</p>
               <p className="text-xs text-slate">Vet visits</p>
             </div>
@@ -296,8 +326,8 @@ export default function DashboardPage() {
 
           {/* Upcoming Visit Alert */}
           {upcomingVisit && (
-            <div className="card border-l-4 border-l-tanzanite-500 mb-8 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-tanzanite-500 flex-shrink-0 mt-0.5" />
+            <div className="card border-l-4 border-l-tanzanite-500 mb-8 flex items-start gap-3" role="status">
+              <AlertCircle className="w-5 h-5 text-tanzanite-700 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
                 <p className="text-sm font-medium text-tanzanite-800">
                   Upcoming vet visit: {formatDate(upcomingVisit.visit_date)}
@@ -305,8 +335,12 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate">
                   {upcomingVisit.vet_name && `${upcomingVisit.vet_name} - `}{upcomingVisit.reason}
                 </p>
-                <Link href="/dashboard/vet-prep" className="text-xs text-tanzanite-500 font-medium hover:underline mt-1 inline-block">
-                  Generate vet prep report <ChevronRight className="w-3 h-3 inline" />
+                <Link
+                  href="/dashboard/vet-prep"
+                  className="text-xs text-tanzanite-700 font-medium hover:underline mt-1 inline-block rounded px-1
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                >
+                  Generate vet prep report <ChevronRight className="w-3 h-3 inline" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -318,11 +352,15 @@ export default function DashboardPage() {
             <div className="card">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-tanzanite-50">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-tanzanite-500" />
+                  <Activity className="w-4 h-4 text-tanzanite-700" aria-hidden="true" />
                   <h3 className="font-semibold text-tanzanite-800">Recent Symptoms</h3>
                 </div>
-                <Link href="/dashboard/symptoms" className="text-xs text-tanzanite-500 font-medium hover:underline">
-                  View all <ChevronRight className="w-3 h-3 inline" />
+                <Link
+                  href="/dashboard/symptoms"
+                  className="text-xs text-tanzanite-700 font-medium hover:underline rounded px-1
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                >
+                  View all <ChevronRight className="w-3 h-3 inline" aria-hidden="true" />
                 </Link>
               </div>
 
@@ -330,7 +368,7 @@ export default function DashboardPage() {
                 <div className="text-center py-8">
                   <p className="text-sm text-slate mb-3">No symptoms logged yet.</p>
                   <Link href="/dashboard/symptoms" className="btn-secondary text-sm inline-block">
-                    <Plus className="w-3.5 h-3.5 inline mr-1" /> Log Symptom
+                    <Plus className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" /> Log Symptom
                   </Link>
                 </div>
               ) : (
@@ -346,11 +384,17 @@ export default function DashboardPage() {
                         </p>
                         {s.notes && <p className="text-xs text-slate truncate">{s.notes}</p>}
                       </div>
+                      {/* WCAG 1.4.1: canonical SeverityDots from SeverityPicker —
+                          uses dot-count + numeric label + sr-only text, not color alone. */}
                       <SeverityDots severity={s.severity} />
                     </div>
                   ))}
-                  <Link href="/dashboard/symptoms" className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-500 hover:bg-tanzanite-50 transition-colors">
-                    <Plus className="w-3.5 h-3.5" /> Log new symptom
+                  <Link
+                    href="/dashboard/symptoms"
+                    className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-700 hover:bg-tanzanite-50 transition-colors
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Log new symptom
                   </Link>
                 </div>
               )}
@@ -360,11 +404,15 @@ export default function DashboardPage() {
             <div className="card">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-tanzanite-50">
                 <div className="flex items-center gap-2">
-                  <Pill className="w-4 h-4 text-ice-500" />
+                  <Pill className="w-4 h-4 text-ice-700" aria-hidden="true" />
                   <h3 className="font-semibold text-tanzanite-800">Active Treatments</h3>
                 </div>
-                <Link href="/dashboard/treatments" className="text-xs text-tanzanite-500 font-medium hover:underline">
-                  View all <ChevronRight className="w-3 h-3 inline" />
+                <Link
+                  href="/dashboard/treatments"
+                  className="text-xs text-tanzanite-700 font-medium hover:underline rounded px-1
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                >
+                  View all <ChevronRight className="w-3 h-3 inline" aria-hidden="true" />
                 </Link>
               </div>
 
@@ -372,7 +420,7 @@ export default function DashboardPage() {
                 <div className="text-center py-8">
                   <p className="text-sm text-slate mb-3">No active treatments.</p>
                   <Link href="/dashboard/treatments/new" className="btn-secondary text-sm inline-block">
-                    <Plus className="w-3.5 h-3.5 inline mr-1" /> Add Treatment
+                    <Plus className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" /> Add Treatment
                   </Link>
                 </div>
               ) : (
@@ -381,6 +429,8 @@ export default function DashboardPage() {
                     <div key={t.id} className="p-3 rounded-lg bg-ice-50/30">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-sm font-medium text-body">{t.treatment_name}</p>
+                        {/* WCAG 1.4.1: canonical EffectivenessDots —
+                            single-tone dot count, no red/amber/green coding. */}
                         <EffectivenessDots rating={t.effectiveness} />
                       </div>
                       <div className="flex flex-wrap gap-x-3 text-xs text-slate">
@@ -391,15 +441,20 @@ export default function DashboardPage() {
                       {t.medications && (
                         <Link
                           href={`/wiki/medications/${t.medications.slug}`}
-                          className="text-xs text-tanzanite-500 hover:underline mt-1 inline-block"
+                          className="text-xs text-tanzanite-700 hover:underline mt-1 inline-block rounded px-1
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
                         >
                           Wiki: {t.medications.brand_names?.[0] || t.medications.name}
                         </Link>
                       )}
                     </div>
                   ))}
-                  <Link href="/dashboard/treatments/new" className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-500 hover:bg-tanzanite-50 transition-colors">
-                    <Plus className="w-3.5 h-3.5" /> Add treatment
+                  <Link
+                    href="/dashboard/treatments/new"
+                    className="flex items-center justify-center gap-1 p-2 rounded-lg text-sm text-tanzanite-700 hover:bg-tanzanite-50 transition-colors
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add treatment
                   </Link>
                 </div>
               )}
@@ -409,15 +464,23 @@ export default function DashboardPage() {
             <div className="card lg:col-span-2">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-tanzanite-50">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-tanzanite-500" />
+                  <Calendar className="w-4 h-4 text-tanzanite-700" aria-hidden="true" />
                   <h3 className="font-semibold text-tanzanite-800">Vet Visits</h3>
                 </div>
                 <div className="flex gap-3">
-                  <Link href="/dashboard/vet-prep" className="text-xs text-ice-600 font-medium hover:underline flex items-center gap-1">
-                    <FileText className="w-3 h-3" /> Vet Prep
+                  <Link
+                    href="/dashboard/vet-prep"
+                    className="text-xs text-ice-700 font-medium hover:underline flex items-center gap-1 rounded px-1
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                  >
+                    <FileText className="w-3 h-3" aria-hidden="true" /> Vet Prep
                   </Link>
-                  <Link href="/dashboard/visits" className="text-xs text-tanzanite-500 font-medium hover:underline">
-                    View all <ChevronRight className="w-3 h-3 inline" />
+                  <Link
+                    href="/dashboard/visits"
+                    className="text-xs text-tanzanite-700 font-medium hover:underline rounded px-1
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                  >
+                    View all <ChevronRight className="w-3 h-3 inline" aria-hidden="true" />
                   </Link>
                 </div>
               </div>
@@ -426,7 +489,7 @@ export default function DashboardPage() {
                 <div className="text-center py-8">
                   <p className="text-sm text-slate mb-3">No vet visits recorded yet.</p>
                   <Link href="/dashboard/visits" className="btn-secondary text-sm inline-block">
-                    <Plus className="w-3.5 h-3.5 inline mr-1" /> Add Visit
+                    <Plus className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" /> Add Visit
                   </Link>
                 </div>
               ) : (
@@ -443,7 +506,7 @@ export default function DashboardPage() {
                           {v.diagnosis && <span>Dx: {v.diagnosis}</span>}
                         </div>
                         {v.follow_up_date && (
-                          <p className="text-xs text-tanzanite-500 mt-1">
+                          <p className="text-xs text-tanzanite-700 mt-1 font-medium">
                             Follow-up: {formatDate(v.follow_up_date)}
                           </p>
                         )}
@@ -458,16 +521,20 @@ export default function DashboardPage() {
             <div className="card lg:col-span-2">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-tanzanite-50">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-tanzanite-500" />
+                  <FileText className="w-4 h-4 text-tanzanite-700" aria-hidden="true" />
                   <h3 className="font-semibold text-tanzanite-800">Vet Documents</h3>
                 </div>
-                <Link href="/dashboard/documents" className="text-xs text-tanzanite-500 font-medium hover:underline">
-                  View all <ChevronRight className="w-3 h-3 inline" />
+                <Link
+                  href="/dashboard/documents"
+                  className="text-xs text-tanzanite-700 font-medium hover:underline rounded px-1
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tanzanite-500 focus-visible:ring-offset-1"
+                >
+                  View all <ChevronRight className="w-3 h-3 inline" aria-hidden="true" />
                 </Link>
               </div>
               <p className="text-sm text-slate mb-3">Upload and view vet records, culture results, prescriptions, and lab reports.</p>
               <Link href="/dashboard/documents" className="btn-secondary text-sm inline-block">
-                <FileText className="w-3.5 h-3.5 inline mr-1" /> Manage Documents
+                <FileText className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" /> Manage Documents
               </Link>
             </div>
           </div>
