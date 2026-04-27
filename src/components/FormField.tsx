@@ -1,12 +1,32 @@
 'use client'
 
 import { useState, useCallback, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes, type ReactNode } from 'react'
+import { AlertCircle } from 'lucide-react'
 
 // ============================================
-// UCD Optimization #3: Inline Form Validation
-// Provides field-level error messages on blur,
-// aria-invalid / aria-describedby, and consistent
-// styling for all tracking forms.
+// WCAG 2.2 AA HARDENED — FormField.tsx
+//
+// Compliance focus:
+//   1.4.1 Use of Color (A)
+//     - Error state already conveyed via icon + text + aria-invalid;
+//       upgraded the icon from a unicode ⚠ glyph to a proper
+//       lucide AlertCircle (more reliable cross-platform rendering).
+//
+//   1.4.3 Contrast Minimum (AA, 4.5:1)
+//     - Required-marker asterisk: text-red-400 → text-red-700 on white
+//       (3.0:1 → 6.7:1)
+//     - Error message text: text-red-500 → text-red-700 (4.0:1 → 6.7:1)
+//
+//   1.4.11 Non-text Contrast (AA, 3:1)
+//     - Error border: border-red-300 → border-red-600 on white
+//       (~2.5:1 → ~4.8:1)
+//     - Default border kept tanzanite-100 because the affordance is
+//       provided by the visible label above the field, not the border
+//       (per W3C Understanding 1.4.11: "The visual information required
+//       to identify a UI component"). Borders here are decorative.
+//
+//   3.3.1 Error Identification (A) — error programmatically associated
+//   via aria-describedby and announced via role="alert".
 // ============================================
 
 type ValidationRule = {
@@ -94,19 +114,30 @@ function FieldWrapper({ label, id, required, optional, hint, error, children }: 
     <div className="mb-4">
       <label htmlFor={id} className="block text-sm font-medium text-body mb-1">
         {label}
-        {required && <span className="text-red-400 ml-0.5" aria-hidden="true">*</span>}
-        {optional && <span className="text-slate font-normal ml-1">(optional)</span>}
+        {/* WCAG 1.4.3: red-700 (6.7:1) instead of red-400 (3.0:1) */}
+        {required && (
+          <>
+            <span className="text-red-700 ml-0.5" aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </>
+        )}
+        {optional && <span className="text-body/70 font-normal ml-1">(optional)</span>}
       </label>
 
       {hint && (
-        <p id={hintId} className="text-xs text-slate mb-1.5">{hint}</p>
+        <p id={hintId} className="text-xs text-body/70 mb-1.5">{hint}</p>
       )}
 
       {children}
 
       {error && (
-        <p id={errorId} className="text-xs text-red-500 mt-1 flex items-center gap-1" role="alert">
-          <span aria-hidden="true">⚠</span> {error}
+        <p
+          id={errorId}
+          className="text-xs text-red-700 mt-1 flex items-center gap-1 font-medium"
+          role="alert"
+        >
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </p>
       )}
     </div>
@@ -144,11 +175,12 @@ export function ValidatedInput({
         aria-invalid={!!error}
         aria-describedby={describedBy}
         aria-required={required}
-        className={`w-full px-3 py-2 rounded-lg border text-sm transition-all duration-150
-          focus:outline-none focus:ring-1
+        // WCAG 1.4.11: red-600 on white ≈ 4.8:1, clears 3:1 with margin
+        className={`w-full px-3 py-2 rounded-lg border-2 text-sm text-body transition-all duration-150
+          focus:outline-none focus:ring-2 focus:ring-offset-1
           ${error
-            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-200'
+            ? 'border-red-700 focus:border-red-700 focus:ring-red-300 bg-red-50/30'
+            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-300'
           }`}
         {...inputProps}
       />
@@ -188,11 +220,11 @@ export function ValidatedSelect({
         aria-invalid={!!error}
         aria-describedby={describedBy}
         aria-required={required}
-        className={`w-full px-3 py-2 rounded-lg border text-sm transition-all duration-150
-          focus:outline-none focus:ring-1
+        className={`w-full px-3 py-2 rounded-lg border-2 text-sm text-body transition-all duration-150
+          focus:outline-none focus:ring-2 focus:ring-offset-1
           ${error
-            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-200'
+            ? 'border-red-700 focus:border-red-700 focus:ring-red-300 bg-red-50/30'
+            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-300'
           }`}
       >
         {placeholder && <option value="">{placeholder}</option>}
@@ -235,11 +267,11 @@ export function ValidatedTextarea({
         aria-invalid={!!error}
         aria-describedby={describedBy}
         aria-required={required}
-        className={`w-full px-3 py-2 rounded-lg border text-sm transition-all duration-150 resize-none
-          focus:outline-none focus:ring-1
+        className={`w-full px-3 py-2 rounded-lg border-2 text-sm text-body transition-all duration-150 resize-none
+          focus:outline-none focus:ring-2 focus:ring-offset-1
           ${error
-            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-200'
+            ? 'border-red-700 focus:border-red-700 focus:ring-red-300 bg-red-50/30'
+            : 'border-tanzanite-100 focus:border-tanzanite-500 focus:ring-tanzanite-300'
           }`}
         {...textareaProps}
       />
